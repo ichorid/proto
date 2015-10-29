@@ -2,6 +2,7 @@
 #define PROTO_WRAPPERS_INTERFACE_H_
 #include "common.h"
 
+//Universal SAT solver wrapper interface definition
 class SWrapper
 {
 public:
