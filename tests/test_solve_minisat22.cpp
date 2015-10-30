@@ -25,6 +25,9 @@ int main(int argc, char* argv[])
 			std::cout<< "Undef";
 		}
 		std::cout << std::endl;
+		for (auto lit: W.GetSolution()){
+			std::cout<< lit << std::endl;
+		}
 	}
 
 	// test solve with watch_scans limit
@@ -49,5 +52,19 @@ int main(int argc, char* argv[])
 			std::cout<< "Undef";
 		}
 		std::cout << std::endl;
+	}
+	// test  MakeSample
+	{
+		const char* filename="cnf/bivium_template_new.cnf";
+		Cnf cnf;
+		ReadCNFile(filename, cnf);
+		Sample sample;
+		MakeSample(cnf, 177, sample, 100);
+		for (auto unit: sample){
+			for (auto lit: unit)
+				std::cout << lit << " ";
+			std::cout << std::endl;
+		}
+
 	}
 }

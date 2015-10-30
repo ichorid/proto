@@ -53,3 +53,14 @@ SolverReport Minisat22Wrapper::GetReport()
 	return out;
 }
 
+UnitClauseVector Minisat22Wrapper::GetSolution()
+{
+	UnitClauseVector out;
+	assert(S.nVars()==S.model.size());
+	for (int i=0; i<S.nVars(); ++i){
+		Lit lit = (i+1) * (1-2*(S.model[i]==l_False));
+		out.push_back(lit);
+	}
+	return out;
+}
+

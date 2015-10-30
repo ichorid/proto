@@ -1,4 +1,6 @@
 #include "utils.h"
+#include "wrappers/minisat22.h"
+#include <random>
 
 void SkipLine(IStream& in)
 {
@@ -81,3 +83,45 @@ void ReadCNFile(const char* file_name, Cnf& cnf)
 	ReadCNF(in, cnf);
 	file.close();
 }
+
+void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
+{
+	std::random_device rng;
+	std::mt19937 mt(rng());
+	std::uniform_int_distribution<int> rnd_bit(0,1);
+	for (int j=0; j<sample_size; ++j){
+		// Create random core vector
+		UnitClauseVector rnd_core;
+		for (int i=0; i<core_len; ++i)
+			rnd_core.push_back((i+1)*(1-2*rnd_bit(mt)));
+
+		Minisat22Wrapper solver;
+		solver.InitSolver(cnf);
+		solver.AddUCs(rnd_core);
+		solver.Solve();
+		sample.push_back(solver.GetSolution());
+	}
+}
+
+
+
+	
+
+
+	
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

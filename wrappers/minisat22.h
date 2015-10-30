@@ -16,6 +16,7 @@ public:
 	void Solve();
 	void SetWatchScansLimit(long long unsigned int scans_limit);
 	SolverReport GetReport();
+	UnitClauseVector GetSolution();
 protected:
 	//Members
 	Minisat::Solver S;
