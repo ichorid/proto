@@ -104,24 +104,3 @@ void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
 }
 
 
-
-	
-
-
-	
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

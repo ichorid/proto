@@ -1,37 +1,46 @@
 #include <algorithm>
 #include <assert.h>
 #include <math.h>
+#include <random>
 #include "search/taboo.h"
+#include <iostream>
 
-int CountOnes(const std::string& str)
+
+
+
+TabooSearch::TabooSearch(const Sample& samp)
 {
-	int out=0;
-	for (auto ch: str)
-		out+=(ch==1);
-	return out;
+	sample_ = samp;
+	std::random_device rnd_dev;
+	rng.seed(rnd_dev());
+	PointId point_zero = PointId();
+	PointStats* ps = new PointStats {
+		.point_id = point_zero,
+		.sample_size = 0,
+		.sat_total = 0,
+		.best_cutoff = 0,
+		.best_fitness = 0
+	};
+	checked_points_[point_zero] = ps;
+	global_record_=ps;
+
 }
 
-
-/*
-std::vector<PointId> GetHammingNbhd (PointId point)
+TabooSearch::~TabooSearch()
 {
-	std::vector<PointId>  result;
-	for (int i =0; i<point.size(); ++i){
-		result.push_back(point);
-		FlipBit(result[i][i]);
-	}
-	return result;
+	// Delete all points from DB
+	for (auto point_pair: checked_points_)
+		delete point_pair.second;
 }
-*/
 
 std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
-
 {
 	std::vector<PointId> result;
 	for (int i =0; i<point.size(); ++i){
 		PointId tmp = point;
 		FlipBit(tmp[i]);
-		if (PointChecked(tmp))
+		//tmp[i]=0;
+		if (!PointChecked(tmp))
 			result.push_back(tmp);
 	}
 	return result;
@@ -73,11 +82,9 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 
 	// Check and update global fitness record if necessary
 	if (ps->best_fitness > global_record_->best_fitness){
-		// New record found !!!
-		global_record_= checked_points_[point];
+		global_record_= checked_points_[point]; // New record found !!!
 	}
 }
-
 
 PointId TabooSearch::GenerateNewPoint()
 {
@@ -90,66 +97,21 @@ PointId TabooSearch::GenerateNewPoint()
 		// All origin's neighbours were already checked, so
 		// we remove it from queue
 		origin_queue_.pop();
+		std::cout << std::endl << " ORIGIN POP!";
 	}
 	// Shuffle candidate points to even their probabilities
-	std::shuffle(candidates.begin(), candidates.end(), mt);
+	std::shuffle(candidates.begin(), candidates.end(), rng);
 
 	return candidates[0];
 }
 
-UnitClauseVector MaskUC(const BitMask& mask, const UnitClauseVector& ucv)
-{
-	assert(mask.size()==ucv.size());
-	UnitClauseVector out;
-	for (int i=0; i<mask.size(); ++i)
-		if (mask[i]==1)
-			out.push_back(ucv[i]);
-	return out;
-}
-
-
-//Sample TabooSearch::GenerateNewSample (int sample_size)
-Task TabooSearch::GenerateNewTask()
-{
-	Task out;
-	const PointId point = GenerateNewPoint();
-	for(auto solution_ucv: sample){
-		BitMask full_mask = point + default_mask;
-		out.push_back(MaskUC(full_mask, solution_ucv));
-	}
-	return out;
-}
-
-Task ProcessPointResults (const PointId& point, const Results& results)
+PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& results)
 {
 	AddPointResults(point, results);
-	Task new_task = GenerateNewTask();
-	return new_task;
+	return GenerateNewPoint();
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+PointStats TabooSearch::GetStats()
+{
+	return *global_record_;
+}
