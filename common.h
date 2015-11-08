@@ -10,6 +10,7 @@ typedef std::vector <Lit> Clause;
 typedef Clause UnitClauseVector;
 typedef std::vector <UnitClauseVector> Sample;
 typedef std::vector <UnitClauseVector> Task;
+typedef UnitClauseVector Assignment; // TODO: move me to separate file!
 typedef std::vector <Clause> Cnf;
 typedef enum {
 	UNINITIALIZED,
@@ -24,7 +25,7 @@ typedef enum {
 typedef struct SolverReport
 {
 	SWState state;
-	long long int watch_scans;
+	int watch_scans;
 } SolverReport;
 typedef std::vector <SolverReport> Results;
 

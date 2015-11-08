@@ -1,4 +1,4 @@
-CPP = g++
+CPP = mpic++
 INC1 = ./
 INC2 = ./wrappers/
 INC3 = ./solvers/minisat22/
