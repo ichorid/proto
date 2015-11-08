@@ -8,9 +8,8 @@
 
 
 
-TabooSearch::TabooSearch(const Sample& samp)
+TabooSearch::TabooSearch()
 {
-	sample_ = samp;
 	std::random_device rnd_dev;
 	rng.seed(rnd_dev());
 	PointId point_zero = PointId();

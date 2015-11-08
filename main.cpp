@@ -1,8 +1,6 @@
 #include <master.h>
 #include <worker.h>
 #include <utils.h>
-#define MAIN //Needed for a safe header trick with MPI pseudo-types
-#include <mpi_types.h>
 
 
 int main(int argc, char* argv[])
@@ -21,9 +19,9 @@ int main(int argc, char* argv[])
 	Cnf cnf; ReadCNFile(filename, cnf);
 
 	if (mpi_rank==0){
-		Sample sample; MakeSample(cnf, core_len, sample, units_per_rank);
+		Sample sample; MakeSample(cnf, core_len, out_mask, sample, units_per_rank);
 		Master master();
-		master.Search(num_iterations);
+		master.Search(num_iterations, starting_point, sample);
 		master.PrintResults();
 	}else{
 		// Split sample between worker processes

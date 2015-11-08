@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
 	Sample sample;
 	MakeSample(cnf, core_len, sample, sample_size);
 	int num_vars = sample[0].size();
-	TabooSearch ts = TabooSearch(sample);
+	TabooSearch ts = TabooSearch();
 	PointId point;
 	//for (int i=0; i<core_len; ++i)
 	for (int i=0; i<num_vars-out_len; ++i)
