@@ -21,14 +21,12 @@ int main(int argc, char* argv[])
 	Cnf cnf; ReadCNFile(filename, cnf);
 
 	if (mpi_rank==0){
+		Sample sample; MakeSample(cnf, core_len, sample, units_per_rank);
 		Master master();
 		master.Search(num_iterations);
 		master.PrintResults();
 	}else{
 		// Split sample between worker processes
-		int units_per_rank = sample_size/(mpi_size-1);
-		Sample sample; MakeSample(cnf, core_len, sample, units_per_rank);
-
 		Worker worker(cnf, scans_limit);
 		worker.MainJobCycle();
 	}

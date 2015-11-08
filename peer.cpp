@@ -1,8 +1,30 @@
 #include <mpi.h>
-#include "worker.h"
-#include "mpi_derived.h"
-#include "wrappers/minisat22.h" // TODO: make this object a template
+#include <cstddef>
+#include "common.h"
+#include "peer.h"
+#include "wrappers/minisat22.h"
 
+/* Peer base class methods */
+// Here we describe our datastructures to MPI
+void Peer::MPI_MakeSolverReportType()
+{
+	int count = 2; // number of blocks
+	int blocklens[] = {1,1}; // number of elements in each block
+	MPI_Aint indices[2]; // byte displacements of each block
+	indices[0] = (MPI_Aint)offsetof (struct SolverReport, state);
+	indices[1] = (MPI_Aint)offsetof (struct SolverReport, watch_scans);
+
+	MPI_Datatype old_types[] = {MPI_INT, MPI_INT}; // types of elements in each block 
+	MPI_Type_struct (count, blocklens, indices, old_types, &mpiT_SolverReport_);
+}
+
+/* Worker class methods */
+Worker::Worker(Cnf cnf, int scans_limit , int master_id )
+{
+	cnf_         = cnf;
+	scans_limit_ = scans_limit;
+	master_id_   = master_id;
+}
 
 Assignment Worker::WaitRecieveAssignment ()
 {
@@ -34,7 +56,7 @@ SolverReport Worker::ProcessAssignment(const Assignment &asn)
 
 void Worker::UploadAssignmentReport(const SolverReport rep)
 {
-	MPI_Send(&rep, 1, mpiT_SolverReport, master_id_, data_tag_, MPI_COMM_WORLD);
+	MPI_Send(&rep, 1, mpiT_SolverReport_, master_id_, data_tag_, MPI_COMM_WORLD);
 }
 
 
@@ -50,3 +72,4 @@ void Worker::MainJobCycle()
 }
 
 
+/* Master methods */
