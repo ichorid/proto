@@ -10,8 +10,8 @@ int main(int argc, char* argv[])
 	const char* filename="cnf/bivium_template_new.cnf";
 	int core_len = 177 ;
 	int out_len= 200;
-	int sample_size = 10;
-	int watch_scans_limit = 200000;
+	int sample_size = 100;
+	int watch_scans_limit = 100000;
 	int num_iterations= 10000000;
 	Cnf cnf; ReadCNFile(filename, cnf);
 	Sample sample;
@@ -46,7 +46,7 @@ int main(int argc, char* argv[])
 			solver.SetWatchScansLimit(watch_scans_limit);
 			solver.Solve();
 			res.push_back(solver.GetReport());
-			if ((solver.GetReport()).state==SAT) break;
+			//if ((solver.GetReport()).state==SAT) break;
 		}
 		point = ts.ProcessPointResults(point, res);
 		PointStats best_point = ts.GetStats();

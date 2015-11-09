@@ -26,14 +26,13 @@ typedef std::unordered_map <PointId, PointStats*> PointStatsDB;
 class TabooSearch
 {
 public:
-	TabooSearch(const Sample& samp = Sample());
+	TabooSearch();
 	~TabooSearch();
 	PointId ProcessPointResults (const PointId& point, const Results& results);
 	void AddPointResults (const PointId& point, const Results& results);
 	PointStats GetStats();
 	BestFitnessQueue origin_queue_;
 private:
-	Sample sample_;
 	PointStatsDB checked_points_;
 	PointStats* global_record_ = NULL;
 	std::mt19937 rng;

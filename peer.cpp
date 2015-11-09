@@ -6,9 +6,12 @@
 #include "wrappers/minisat22.h"
 #include <search/taboo.h>
 
+extern MpiBase* mpiS;
+//MPI_Datatype MpiTypes::SolverReport_;
+//MpiTypes Peer::mpiT;
 /* Peer base class methods */
 // Here we describe our datastructures to MPI
-void Peer::MPI_MakeSolverReportType()
+void MpiBase::MPI_MakeSolverReportType()
 {
 	int count = 2; // number of blocks
 	int blocklens[] = {1,1}; // number of elements in each block
@@ -17,7 +20,9 @@ void Peer::MPI_MakeSolverReportType()
 	indices[1] = (MPI_Aint)offsetof (struct SolverReport, watch_scans);
 
 	MPI_Datatype old_types[] = {MPI_INT, MPI_INT}; // types of elements in each block 
-	MPI_Type_struct (count, blocklens, indices, old_types, &mpiT_SolverReport_);
+	MPI_Type_struct (count, blocklens, indices, old_types, &SolverReportT_);
+	MPI_Type_commit(&SolverReportT_);
+	//std::cout << " ADDED TYPE" << std::endl;
 }
 
 /* Worker class methods */
@@ -36,14 +41,16 @@ Assignment Worker::WaitRecieveAssignment ()
 		       	MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 	int* msg_body = (int*) malloc(msg_len * sizeof(Lit));
-	MPI_Recv(&msg_body, msg_len, MPI_INT, master_id_, data_tag_,
+	MPI_Recv(msg_body, msg_len, MPI_INT, master_id_, data_tag_,
 		       	MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
 	Assignment out(msg_body, msg_body+msg_len);
+	//for (int i=0; i< msg_len; ++i) std::cout << " "  << msg_body[i];
+	//for (auto o: out) std::cout << " "  << o;
+
 	free (msg_body);
 	return out;
 }
-
 
 SolverReport Worker::ProcessAssignment(const Assignment &asn)
 {
@@ -58,7 +65,7 @@ SolverReport Worker::ProcessAssignment(const Assignment &asn)
 
 void Worker::UploadAssignmentReport(const SolverReport rep)
 {
-	MPI_Send(&rep, 1, mpiT_SolverReport_, master_id_, data_tag_, MPI_COMM_WORLD);
+	MPI_Send(&rep, 1, mpiS->SolverReportT_, master_id_, data_tag_, MPI_COMM_WORLD);
 }
 
 
@@ -88,6 +95,7 @@ void Master::Search(
 		Results res = ProcessTask (t);
 		point = search_engine_.ProcessPointResults(point, res);
 		// DEBUG
+		for (auto ch: point) std::cout << (ch==0 ? 0 : 1) ; std::cout << std::endl;
 		PointStats best_point = search_engine_.GetStats();
 		auto tmp = search_engine_.origin_queue_.top(); 
 		search_engine_.origin_queue_.pop();
@@ -97,7 +105,8 @@ void Master::Search(
 		std::cout << " Best fitness: " << best_point.best_fitness 
 			<< " Queue size: " <<search_engine_.origin_queue_.size() 
 			<< " queue top: " << search_engine_.origin_queue_.top()->best_fitness
-		       	<< " second top: " << second_best->best_fitness; 
+		       	<< " second top: " << second_best->best_fitness
+			<< std::endl; 
 	}
 }
 
@@ -124,10 +133,11 @@ SolverReport Master::RecieveAndRegister()
 {
 	SolverReport out;
 	MPI_Status status;
-	MPI_Recv(&out, 1, mpiT_SolverReport_, MPI_ANY_SOURCE, data_tag_,
+	MPI_Recv(&out, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_,
 		       	MPI_COMM_WORLD, &status);
 	int sender_id = status.MPI_SOURCE;
 	RegisterWorker(sender_id);
+	return out;
 }
 
 void Master::GiveoutAssignment (int target, Assignment asn)
@@ -143,12 +153,18 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 		       	MPI_COMM_WORLD);
 }
 
-
-
-
-Master::Master (int num_workers)
+/*
+void Master::SendExitSignal()
 {
-	for (int i=1; i<num_workers; ++i)
+	Task t(;
+	for (int i=0 ; i<free_workers_.size(); ++i)
+		t.push_back(std::
+		*/
+
+
+Master::Master (int mpi_size)
+{
+	for (int i=1; i<mpi_size; ++i)
 		RegisterWorker(i);
 }
 

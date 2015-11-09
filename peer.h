@@ -4,22 +4,27 @@
 #include "common.h"
 #include "search/taboo.h"
 
+class MpiBase
+{
+public:
+	 MpiBase (int* argc_p, char ***argv_p ) { MPI_Init (argc_p, argv_p); MPI_InitDatatypes ();}
+	~MpiBase () { MPI_UnregDatatypes ();   MPI_Finalize();}
+	MPI_Datatype SolverReportT_;
+private:
+	void MPI_InitDatatypes () { MPI_MakeSolverReportType (); }
+	void MPI_UnregDatatypes () { MPI_Type_free (&SolverReportT_); }
+	void MPI_MakeSolverReportType ();
+	MpiBase (MpiBase const&) = delete;
+	void operator = (MpiBase const&) = delete;
+};
+
 // This class defines a kind of MPI "language and protocol" for classes that
 // derive from it to use. It should contain MPI "derived types", tag numbers, etc.
 // It's constructor/destructor actually invoke MPI_Datatype (un)registration procedures.
 class Peer
 {
-public:
-	Peer () { MPI_InitDatatypes (); }
-	~Peer () { MPI_UnregDatatypes (); }
 protected:
 	int data_tag_=0;
-	// TODO: Find a better way to produce this things
-	static MPI_Datatype mpiT_SolverReport_;
-private:
-	void MPI_InitDatatypes () { MPI_MakeSolverReportType (); }
-	void MPI_UnregDatatypes () { MPI_Type_free (&mpiT_SolverReport_); }
-	void MPI_MakeSolverReportType ();
 };
 
 
@@ -40,7 +45,7 @@ protected:
 class Master : protected Peer
 {
 public:
-	Master (int num_workers);
+	Master (int mpi_size);
 	void Search(
 		const int     num_iterations,
 	       	const PointId starting_point,

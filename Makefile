@@ -4,7 +4,7 @@ INC2 = ./wrappers/
 INC3 = ./solvers/minisat22/
 INC4 = ./search
 INCDIRS = -I${INC1} -I${INC2} -I${INC3} -I${INC4} 
-CPPFLAGS = -O5 -g -std=c++11 ${INCDIRS}
+CPPFLAGS = -O5 -g  -std=c++11 ${INCDIRS}
 
 utils.o: utils.cpp
 	${CPP} ${CPPFLAGS} utils.cpp -c
@@ -33,14 +33,21 @@ test_taboo.o: tests/test_taboo.cpp
 test_taboo: test_taboo.o utils.o minisat22.o taboo.o
 	${CPP} ${CPPFLAGS} tests/test_taboo.o utils.o wrappers/minisat22.o solvers/minisat22/core/Solver.o search/taboo.o -o bin/test_taboo
 
+peer.o: peer.cpp
+	${CPP} ${CPPFLAGS} peer.cpp -c -o peer.o
+
+main.o: main.cpp
+	${CPP} ${CPPFLAGS} main.cpp -c -o main.o
+
+fhtagnsat: main.o utils.o peer.o
+	${CPP} ${CPPFLAGS} main.o utils.o peer.o wrappers/minisat22.o solvers/minisat22/core/Solver.o search/taboo.o -o bin/fhtagnsat
 
 
 clean:
 	rm  *.o
 	rm  ${INC1}*.o
 	rm  ${INC2}*.o
+	rm  ${INC4}*.o
 	rm  tests/*.o
-	rm bin/test_cnf_readwrite
-	rm bin/test_solve_minisat22
-	rm bin/test_taboo
+	rm bin/*
 
