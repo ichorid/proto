@@ -39,6 +39,8 @@ Assignment Worker::WaitRecieveAssignment ()
 	int msg_len;
 	MPI_Recv(&msg_len, 1, MPI_INT, master_id_, data_tag_,
 		       	MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	if (msg_len==0)
+		return Assignment(); //Stop signal recieved
 
 	int* msg_body = (int*) malloc(msg_len * sizeof(Lit));
 	MPI_Recv(msg_body, msg_len, MPI_INT, master_id_, data_tag_,
@@ -73,8 +75,7 @@ void Worker::MainJobCycle()
 {
 	for (;;){
 		Assignment asn = WaitRecieveAssignment ();
-		if (asn.size()==0)
-			break;
+		if (asn.size()==0) break;
 		SolverReport rep = ProcessAssignment (asn);
 		UploadAssignmentReport (rep);
 	}
@@ -94,6 +95,7 @@ void Master::Search(
 		Task t = GenTask (BM_or (point, out_mask), sample);
 		Results res = ProcessTask (t);
 		point = search_engine_.ProcessPointResults(point, res);
+		
 		// DEBUG
 		for (auto ch: point) std::cout << (ch==0 ? 0 : 1) ; std::cout << std::endl;
 		PointStats best_point = search_engine_.GetStats();
@@ -121,6 +123,7 @@ Results Master::ProcessTask(Task& task)
 			GiveoutAssignment(GetWorker(), task.back()); 
 			task.pop_back();
 		}
+		if (task[0].size()==0) break; // Stop signal
 		// Wait for a report from worker and add his id to
 		// free_workers stack immediately.
 		SolverReport rep = RecieveAndRegister();
@@ -145,6 +148,8 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 	int msg_len = asn.size();
 	MPI_Send(&msg_len, 1, MPI_INT, target, data_tag_,
 		       	MPI_COMM_WORLD);
+	if (msg_len==0)
+		return; // Sending stop signal
 
 	// Achtung! Pointer trick should work only for std::vector containers!!!
 	// TODO: make some kind of comiler assert to check if we're
@@ -153,17 +158,19 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 		       	MPI_COMM_WORLD);
 }
 
-/*
 void Master::SendExitSignal()
 {
-	Task t(;
-	for (int i=0 ; i<free_workers_.size(); ++i)
-		t.push_back(std::
-		*/
+	Task t;
+	for (int i=0; i<total_workers_; ++i)
+		t.push_back(UnitClauseVector());
+	ProcessTask(t);
+}
+
 
 
 Master::Master (int mpi_size)
 {
+	total_workers_= mpi_size-1; 
 	for (int i=1; i<mpi_size; ++i)
 		RegisterWorker(i);
 }

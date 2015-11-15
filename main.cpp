@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
 	int core_len = 177;
 	int out_len= 200;
 	int sample_size = 100;
-	int num_iterations= 1000;
+	int num_iterations= 30;
 
 
 	if (mpi_rank==0){
@@ -38,7 +38,7 @@ int main(int argc, char* argv[])
 
 		Master master(mpi_size);
 		master.Search(num_iterations, starting_point, out_mask, sample);
-		//master.SendExitSignal();
+		master.SendExitSignal();
 	}else{
 		// Split sample between worker processes
 		Worker worker(cnf, scans_limit);

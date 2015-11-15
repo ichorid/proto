@@ -52,7 +52,9 @@ public:
 	       	const BitMask out_mask,
 	      	const Sample  sample);
 	TabooSearch search_engine_;
+	void SendExitSignal();
 private:
+	int total_workers_;
 	std::vector <int> free_workers_;
 	Results ProcessTask(Task& task);
 	void GiveoutAssignment (int id, Assignment asn);
