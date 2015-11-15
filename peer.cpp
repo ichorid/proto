@@ -1,4 +1,8 @@
 #include <iostream>
+/* Workaround for a buggy MPI compiler */
+#undef SEEK_SET
+#undef SEEK_END
+#undef SEEK_CUR
 #include <mpi.h>
 #include <cstddef>
 #include "common.h"

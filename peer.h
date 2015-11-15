@@ -1,5 +1,9 @@
 #ifndef PROTO_PEER_H_
 #define PROTO_PEER_H_
+/* Workaround for a buggy MPI compiler */
+#undef SEEK_SET
+#undef SEEK_END
+#undef SEEK_CUR
 #include <mpi.h>
 #include "common.h"
 #include "search/taboo.h"
