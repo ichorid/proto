@@ -4,6 +4,7 @@
 #include <random>
 #include "search/taboo.h"
 #include <iostream>
+#include "easylogging++.h"
 
 
 
@@ -82,6 +83,7 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	// Check and update global fitness record if necessary
 	if (ps->best_fitness > global_record_->best_fitness){
 		global_record_= checked_points_[point]; // New record found !!!
+		LOG(INFO) <<" New record found  ("<< ps->best_fitness << ") : " << Point2Varstring (point) ;
 	}
 }
 
@@ -107,6 +109,15 @@ PointId TabooSearch::GenerateNewPoint()
 PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& results)
 {
 	AddPointResults(point, results);
+	// DEBUG
+	auto second_best =  *(&origin_queue_.top() + 
+			(origin_queue_.size()>1 ? 1:0)); // dirty pointer hack!!
+	LOG_EVERY_N(10, DEBUG) 
+		<< Point2Bitstring(point) 
+		<< " Best fitness: " << GetStats().best_fitness 
+		<< " queue size: " <<origin_queue_.size() 
+		<< " queue top: " << origin_queue_.top()->best_fitness
+		<< " second top: " << second_best->best_fitness;
 	return GenerateNewPoint();
 }
 

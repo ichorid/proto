@@ -39,7 +39,7 @@ peer.o: peer.cpp
 main.o: main.cpp
 	${CPP} ${CPPFLAGS} main.cpp -c -o main.o
 
-fhtagnsat: main.o utils.o peer.o
+fhtagnsat: main.o utils.o peer.o taboo.o
 	${CPP} ${CPPFLAGS} main.o utils.o peer.o wrappers/minisat22.o solvers/minisat22/core/Solver.o search/taboo.o -o bin/fhtagnsat
 
 

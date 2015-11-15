@@ -23,6 +23,9 @@ public:
 typedef std::priority_queue <PointStats*, std::vector <PointStats*>, ComparePointFitness > BestFitnessQueue;
 typedef std::unordered_map <PointId, PointStats*> PointStatsDB;
 
+inline std::string Point2Bitstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "0" : "1") ; return out;}
+inline std::string Point2Varstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "" : " "+std::to_string(i+1)); return out;}
+
 class TabooSearch
 {
 public:

@@ -5,6 +5,7 @@
 #include "peer.h"
 #include "wrappers/minisat22.h"
 #include <search/taboo.h>
+#include "easylogging++.h"
 
 extern MpiBase* mpiS;
 //MPI_Datatype MpiTypes::SolverReport_;
@@ -95,20 +96,6 @@ void Master::Search(
 		Task t = GenTask (BM_or (point, out_mask), sample);
 		Results res = ProcessTask (t);
 		point = search_engine_.ProcessPointResults(point, res);
-		
-		// DEBUG
-		for (auto ch: point) std::cout << (ch==0 ? 0 : 1) ; std::cout << std::endl;
-		PointStats best_point = search_engine_.GetStats();
-		auto tmp = search_engine_.origin_queue_.top(); 
-		search_engine_.origin_queue_.pop();
-	       	auto second_best =  search_engine_.origin_queue_.top();
-	       	search_engine_.origin_queue_.push(tmp);
-
-		std::cout << " Best fitness: " << best_point.best_fitness 
-			<< " Queue size: " <<search_engine_.origin_queue_.size() 
-			<< " queue top: " << search_engine_.origin_queue_.top()->best_fitness
-		       	<< " second top: " << second_best->best_fitness
-			<< std::endl; 
 	}
 }
 
@@ -118,7 +105,7 @@ Results Master::ProcessTask(Task& task)
 	int initial_task_size = task.size();
 	while(res.size()<initial_task_size){
 		// Send work until free_workers stack depletes or there
-		// it no task units left
+		// are no task units left
 		while (free_workers_.size()>0 && task.size()>0){
 			GiveoutAssignment(GetWorker(), task.back()); 
 			task.pop_back();
@@ -153,7 +140,7 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 
 	// Achtung! Pointer trick should work only for std::vector containers!!!
 	// TODO: make some kind of comiler assert to check if we're
-	// actually using std::vector or some other container !!!
+	// actually using std::vector and not some other container !!!
 	MPI_Send(&asn[0], msg_len, MPI_INT, target, data_tag_,
 		       	MPI_COMM_WORLD);
 }
