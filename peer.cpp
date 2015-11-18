@@ -12,9 +12,7 @@
 #include "easylogging++.h"
 
 extern MpiBase* mpiS;
-//MPI_Datatype MpiTypes::SolverReport_;
-//MpiTypes Peer::mpiT;
-/* Peer base class methods */
+
 // Here we describe our datastructures to MPI
 void MpiBase::MPI_MakeSolverReportType()
 {
@@ -27,7 +25,6 @@ void MpiBase::MPI_MakeSolverReportType()
 	MPI_Datatype old_types[] = {MPI_INT, MPI_INT}; // types of elements in each block 
 	MPI_Type_struct (count, blocklens, indices, old_types, &SolverReportT_);
 	MPI_Type_commit(&SolverReportT_);
-	//std::cout << " ADDED TYPE" << std::endl;
 }
 
 /* Worker class methods */
@@ -42,24 +39,19 @@ Assignment Worker::WaitRecieveAssignment ()
 {
 	// Assumes assignment is just an array of int's
 	int msg_len;
-	MPI_Recv(&msg_len, 1, MPI_INT, master_id_, data_tag_,
-		       	MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	MPI_Recv(&msg_len, 1, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	if (msg_len==0)
 		return Assignment(); //Stop signal recieved
 
-	int* msg_body = (int*) malloc(msg_len * sizeof(Lit));
-	MPI_Recv(msg_body, msg_len, MPI_INT, master_id_, data_tag_,
-		       	MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	int* tmp_arr = (int*) malloc(msg_len * sizeof(Lit));
+	MPI_Recv(tmp_arr, msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	Assignment out(tmp_arr, tmp_arr+msg_len);
 
-	Assignment out(msg_body, msg_body+msg_len);
-	//for (int i=0; i< msg_len; ++i) std::cout << " "  << msg_body[i];
-	//for (auto o: out) std::cout << " "  << o;
-
-	free (msg_body);
+	free (tmp_arr);
 	return out;
 }
 
-SolverReport Worker::ProcessAssignment(const Assignment &asn)
+SolverReport Worker::ProcessAssignment(Assignment &asn)
 {
 	Minisat22Wrapper s;
 	s.InitSolver (cnf_);
@@ -95,11 +87,11 @@ void Master::Search(
 	       	const BitMask out_mask,
 	      	const Sample  sample)
 {
-	PointId point = starting_point;
+	PointId current_point = starting_point;
 	for (int i=0; i<num_iterations; ++i){
-		Task t = GenTask (BM_or (point, out_mask), sample);
-		Results res = ProcessTask (t);
-		point = search_engine_.ProcessPointResults(point, res);
+		Task t = GenTask (BM_or (current_point, out_mask), sample);
+		Results r = ProcessTask (t);
+		current_point = search_engine_.ProcessPointResults(current_point, r);
 	}
 }
 
@@ -114,7 +106,7 @@ Results Master::ProcessTask(Task& task)
 			GiveoutAssignment(GetWorker(), task.back()); 
 			task.pop_back();
 		}
-		if (task[0].size()==0) break; // Stop signal
+		if (task[0].size()==0) break; // Special case - stop signal
 		// Wait for a report from worker and add his id to
 		// free_workers stack immediately.
 		SolverReport rep = RecieveAndRegister();
@@ -127,18 +119,15 @@ SolverReport Master::RecieveAndRegister()
 {
 	SolverReport out;
 	MPI_Status status;
-	MPI_Recv(&out, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_,
-		       	MPI_COMM_WORLD, &status);
-	int sender_id = status.MPI_SOURCE;
-	RegisterWorker(sender_id);
+	MPI_Recv(&out, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_, MPI_COMM_WORLD, &status);
+	RegisterWorker(status.MPI_SOURCE);
 	return out;
 }
 
 void Master::GiveoutAssignment (int target, Assignment asn)
 {
 	int msg_len = asn.size();
-	MPI_Send(&msg_len, 1, MPI_INT, target, data_tag_,
-		       	MPI_COMM_WORLD);
+	MPI_Send(&msg_len, 1, MPI_INT, target, data_tag_, MPI_COMM_WORLD);
 	if (msg_len==0)
 		return; // Sending stop signal
 
@@ -156,8 +145,6 @@ void Master::SendExitSignal()
 		t.push_back(UnitClauseVector());
 	ProcessTask(t);
 }
-
-
 
 Master::Master (int mpi_size)
 {

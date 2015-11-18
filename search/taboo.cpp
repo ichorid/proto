@@ -109,15 +109,16 @@ PointId TabooSearch::GenerateNewPoint()
 PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& results)
 {
 	AddPointResults(point, results);
+	
 	// DEBUG
-	auto second_best =  *(&origin_queue_.top() + 
-			(origin_queue_.size()>1 ? 1:0)); // dirty pointer hack!!
+	auto second_best =  *(&origin_queue_.top() + (origin_queue_.size()>1 ? 1:0)); // dirty pointer hack!!
 	LOG_EVERY_N(10, DEBUG) 
 		<< Point2Bitstring(point) 
 		<< " Best fitness: " << GetStats().best_fitness 
 		<< " queue size: " <<origin_queue_.size() 
 		<< " queue top: " << origin_queue_.top()->best_fitness
 		<< " second top: " << second_best->best_fitness;
+
 	return GenerateNewPoint();
 }
 
