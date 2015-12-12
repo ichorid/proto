@@ -86,43 +86,89 @@ void Master::Search(
 	       	const PointId starting_point,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
-	      	const Sample  sample)
+	      	const Sample  sample,
+		const int num_points)
 {
-	PointId current_point = starting_point;
-	for (int i=0; i<num_iterations; ++i){
-		Task t = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample);
-		Results r = ProcessTask (t);
-		current_point = search_engine_.ProcessPointResults(current_point, r);
+	std::vector <PointId> probe_points;
+	probe_points.push_back(starting_point); // FIXME
+	for (int i=0; i<num_iterations; ++i)
+	{
+		std::vector <Task> all_tasks;
+		for (auto point: probe_points)
+		{
+			Task t =
+			{
+				.id = point,
+				.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
+			};
+			all_tasks.push_back(t);
+		}
+
+		std::vector <PointResults> all_results = ProcessTasks (all_tasks);
+		for (auto result: all_results)
+		{
+			search_engine_.AddPointResults(result);
+		}
+		probe_points = search_engine_.GenerateNewPoints(); 
 	}
 }
 
-Results Master::ProcessTask(Task& task)
+
+
+std::vector <PointResults> Master::ProcessTasks(const std::vector <Task> &tasks)
 {
-	Results res;
-	int initial_task_size = task.size();
-	while(res.size()<initial_task_size){
+	std::vector <PointResults> out;
+
+	std::vector <UnitClauseVector> flat_task;
+	for (auto task: tasks)
+	{
+		std::copy(task.units.begin(), task.units.end(), std::back_inserter(flat_task));
+	}
+	std::vector <SolverReport> flat_results = ProcessTaskUnits(flat_task);
+
+	int i=0;
+	for (auto task: tasks)
+	{
+		PointResults pr =
+		{
+			.id = task.id,
+			.reps = std::vector <SolverReport> (&flat_results[i], &flat_results[i + task.units.size()])
+		};
+		out.push_back(pr);
+		i+=task.units.size();
+	}
+	return out;
+}
+
+std::vector <SolverReport> Master::ProcessTaskUnits(const std::vector <UnitClauseVector> &units)
+{
+	std::vector <SolverReport> out(units.size());
+	std::vector <int> worker2unitnum(free_workers_.size());
+	for (int i=0; i < out.size(); ++i)
+	{
 		// Send work until free_workers stack depletes or there
-		// are no task units left
-		while (free_workers_.size()>0 && task.size()>0){
-			GiveoutAssignment(GetWorker(), task.back()); 
-			task.pop_back();
+		// are no units left
+		while (free_workers_.size()>0 && i<out.size()){
+			int workernum = GetWorker();
+			worker2unitnum[workernum] = i;
+			GiveoutAssignment(workernum, units.back()); 
 		}
-		if (task[0].size()==0) break; // Special case - stop signal
-		// Wait for a report from worker and add his id to
+		if (units[0].size()==0) break; // Special case - stop signal task
+		// Wait for a report from worker and add it's id to
 		// free_workers stack immediately.
-		SolverReport rep = RecieveAndRegister();
-		res.push_back(rep);
+		auto report = RecieveAndRegister();
+		out[worker2unitnum[free_workers_.back()]]=report;
 	};
-	return res;
+	return out;
 }
 
 SolverReport Master::RecieveAndRegister()
 {
-	SolverReport out;
+	SolverReport rep;
 	MPI_Status status;
-	MPI_Recv(&out, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_, MPI_COMM_WORLD, &status);
+	MPI_Recv(&rep, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_, MPI_COMM_WORLD, &status);
 	RegisterWorker(status.MPI_SOURCE);
-	return out;
+	return rep;
 }
 
 void Master::GiveoutAssignment (int target, Assignment asn)
@@ -141,10 +187,10 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 
 void Master::SendExitSignal()
 {
-	Task t;
+	std::vector <UnitClauseVector> t;
 	for (int i=0; i<total_workers_; ++i)
 		t.push_back(UnitClauseVector());
-	ProcessTask(t);
+	ProcessTaskUnits(t);
 }
 
 Master::Master (int mpi_size)
@@ -153,13 +199,3 @@ Master::Master (int mpi_size)
 	for (int i=1; i<mpi_size; ++i)
 		RegisterWorker(i);
 }
-
-
-
-
-
-
-
-
-
-

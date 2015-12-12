@@ -10,9 +10,11 @@ typedef int Var;
 typedef std::vector <Lit> Clause;
 typedef Clause UnitClauseVector;
 typedef std::vector <UnitClauseVector> Sample;
-typedef std::vector <UnitClauseVector> Task;
+
 typedef UnitClauseVector Assignment; // TODO: move me to separate file!
 typedef std::vector <Clause> Cnf;
+typedef std::string PointId;
+typedef std::string BitMask;
 typedef enum {
 	UNINITIALIZED,
 	INITIALIZED,
@@ -23,18 +25,28 @@ typedef enum {
 	WORKING
 } SWState;
 
+typedef struct Task
+{
+	PointId id;
+	std::vector <UnitClauseVector> units;
+} Task;
+
 typedef struct SolverReport
 {
 	SWState state;
 	int watch_scans;
 } SolverReport;
-typedef std::vector <SolverReport> Results;
+
+typedef struct PointResults
+{
+	PointId id;
+	std::vector <SolverReport> reps;
+} PointResults;
+
 
 inline int var(Lit l) { return (l>=0?l:(-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
 inline char FlipBit(char& bit){ return  bit^=1;}
 
-typedef std::string PointId;
-typedef std::string BitMask;
 typedef struct PointStats
 {
 	PointId  point_id;
@@ -55,6 +67,16 @@ inline BitMask BM_or(const BitMask& a, const BitMask& b)
 	return out;
 }
 
+/*
+inline std::vector<BitMask> BM_or(const std::vector<BitMask>& a, const BitMask& b)
+{
+	std::vector<BitMask> out;
+	for (auto m: a)
+		out.push_back(BM_or(m, b));
+	return out;
+}
+*/
+
 inline BitMask ExpandBM(const BitMask& m, const std::vector <int>& v)
 {
 	assert(m.size()==v.size());
@@ -64,6 +86,19 @@ inline BitMask ExpandBM(const BitMask& m, const std::vector <int>& v)
 		out[v[i]-1]=m[i];
 	return out;
 }
+
+//TODO: reimplement this stuff as templates
+/*
+inline std::vector<BitMask> ExpandBM(const std::vector<BitMask>& a, const std::vector <int>& v)
+{
+	std::vector<BitMask> out;
+	for (auto m: a)
+	{
+		out.push_back(ExpandBM(m, v));
+	}
+	return out;
+}
+*/
 
 inline UnitClauseVector MaskUCVector (const BitMask& mask, const UnitClauseVector& ucv)
 {
@@ -76,15 +111,28 @@ inline UnitClauseVector MaskUCVector (const BitMask& mask, const UnitClauseVecto
 	return out;
 }
 
-inline Task GenTask(const BitMask& mask, const Sample& sample)
+inline std::vector <UnitClauseVector> GenTaskUnits(const BitMask& mask, const Sample& sample)
 {
 	assert(sample.size()>0);
 	assert(sample[0].size()>=mask.size());
-	Task out;
+	std::vector <UnitClauseVector> out;
 	for(auto solution_ucv: sample)
 		out.push_back( MaskUCVector(mask, solution_ucv) );
 	return out;
 }
+
+/*
+inline Task GenTask(const std::vector <BitMask>& masks_vec, const Sample& sample)
+{
+	assert(sample.size()>0);
+	//assert(sample[0].size()>=mask[0].size());
+	Task out;
+	for(auto mask: masks_vec)
+		for(auto solution_ucv: sample)
+			out.push_back( MaskUCVector(mask, solution_ucv) );
+	return out;
+}
+*/
 
 inline int CountOnes(const std::string& str)
 {

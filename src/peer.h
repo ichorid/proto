@@ -56,13 +56,15 @@ public:
 	       	const PointId starting_point,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
-	      	const Sample  sample);
+	      	const Sample  sample,
+		const int num_points = 1);
 	void SendExitSignal();
 private:
 	int total_workers_;
 	std::vector <int> free_workers_;
 
-	Results ProcessTask(Task& task);
+	std::vector <SolverReport> ProcessTaskUnits(const std::vector <UnitClauseVector> &units);
+	std::vector <PointResults> ProcessTasks(const std::vector <Task> &tasks);
 	void GiveoutAssignment (int id, Assignment asn);
 	SolverReport RecieveAndRegister();
 	void RegisterWorker(int id) {free_workers_.push_back(id);}

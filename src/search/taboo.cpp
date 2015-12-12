@@ -46,11 +46,12 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 	return result;
 }
 
-void TabooSearch::AddPointResults (const PointId& point, const Results& results)
+void TabooSearch::AddPointResults (const PointResults& results)
 {
+	PointId point = results.id;
 	// Filter SATs and sort their scans values
 	std::vector <long long int> sat_scans;
-	for (auto report: results)
+	for (auto report: results.reps)
 		if (report.state==SAT)
 			sat_scans.push_back(report.watch_scans);
 	std::sort(sat_scans.begin(), sat_scans.end());
@@ -58,7 +59,7 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	// Create new point
 	PointStats* ps = new PointStats {
 		.point_id = point,
-		.sample_size = results.size(),
+		.sample_size = results.reps.size(),
 		.sat_total = sat_scans.size(),
 		.best_cutoff = 0,
 		.best_incapacity = MAX_DOUBLE
@@ -94,26 +95,46 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	}
 }
 
-PointId TabooSearch::GenerateNewPoint()
+std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates )
 {
+	// ACHTUNG!  Dequeues priority_queue in process!!
 	std::vector <PointId> candidates;
 	for(;;){
 		// Select next origin candidate from top incapacity queue
-		candidates = GetUncheckedHammingNbhd(
+		auto nbhd = GetUncheckedHammingNbhd(
 				origin_queue_.top()->point_id);
-		if (candidates.size()>0) break;
-		// All origin's neighbours were already checked, so
-		// we remove it from queue
+		if (nbhd.size()==0){
+			// All origin's neighbours were already checked, so
+			// we remove it from queue
+			origin_queue_.pop();
+			LOG(DEBUG) << " ORIGIN POP!";
+			continue;
+		}
+		// Append nbhd to candidates
+		std::move(nbhd.begin(), nbhd.end(), std::inserter(candidates, candidates.end()));
+
+ 		// Enough candidates found
+		if (candidates.size()>=desired_candidates)
+		{ 
+			if (candidates.size()==desired_candidates) 
+			{
+				origin_queue_.pop(); // Just for safety
+				LOG(DEBUG) << " ORIGIN POP!";
+			}
+			// Shuffle last nbhd batch to avoid bias
+			std::shuffle(candidates.end()-nbhd.size(), candidates.end(), rng); 
+			break;
+		}
 		origin_queue_.pop();
 		LOG(DEBUG) << " ORIGIN POP!";
 	}
-	// Shuffle candidate points to even their probabilities
-	std::shuffle(candidates.begin(), candidates.end(), rng);
+	candidates.resize(desired_candidates);
 
-	return candidates[0];
+	return candidates;
 }
 
-PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& results)
+/*
+void TabooSearch::ProcessPointResults (const PointId& point, const Results& results)
 {
 	AddPointResults(point, results);
 	
@@ -128,8 +149,8 @@ PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& r
 		<< " queue top: " << origin_queue_.top()->best_incapacity
 		<< " second top: " << second_best->best_incapacity;
 
-	return GenerateNewPoint();
 }
+*/
 
 PointStats TabooSearch::GetStats()
 {
