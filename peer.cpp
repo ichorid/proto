@@ -62,7 +62,7 @@ SolverReport Worker::ProcessAssignment(Assignment &asn)
 	return s.GetReport ();
 }
 
-void Worker::UploadAssignmentReport(const SolverReport rep)
+void Worker::UploadAssignmentReport(SolverReport rep)
 {
 	MPI_Send(&rep, 1, mpiS->SolverReportT_, master_id_, data_tag_, MPI_COMM_WORLD);
 }

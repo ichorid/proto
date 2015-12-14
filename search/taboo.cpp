@@ -84,7 +84,12 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	// Check and update global incapacity record if necessary
 	if (ps->best_incapacity < global_record_->best_incapacity){
 		global_record_= checked_points_[point]; // New record found !!!
-		LOG(INFO) <<" New record found  ("<< ps->best_incapacity << ") : " << Point2Varstring (point) ;
+		LOG(INFO) << " New record found: " 
+			<< CountOnes(point) << " "
+			<< ps->best_incapacity << " "    
+			<< sat_scans.size() << " "
+			<< Point2Bitstring(point) << " ccc "
+			<< Point2Varstring(point) ;
 	}
 }
 
@@ -99,7 +104,7 @@ PointId TabooSearch::GenerateNewPoint()
 		// All origin's neighbours were already checked, so
 		// we remove it from queue
 		origin_queue_.pop();
-		std::cout << std::endl << " ORIGIN POP!";
+		LOG(DEBUG) << " ORIGIN POP!";
 	}
 	// Shuffle candidate points to even their probabilities
 	std::shuffle(candidates.begin(), candidates.end(), rng);
@@ -115,6 +120,8 @@ PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& r
 	auto second_best =  *(&origin_queue_.top() + (origin_queue_.size()>1 ? 1:0)); // dirty pointer hack!!
 	LOG_EVERY_N(10, DEBUG) 
 		<< Point2Bitstring(point) 
+		<< " Point incapacity: " << checked_points_[point]->best_incapacity
+		<< " Point SAT units: " << checked_points_[point]->sat_total
 		<< " Best incapacity: " << GetStats().best_incapacity 
 		<< " queue size: " <<origin_queue_.size() 
 		<< " queue top: " << origin_queue_.top()->best_incapacity
