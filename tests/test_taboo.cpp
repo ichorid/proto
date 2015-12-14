@@ -54,7 +54,7 @@ int main(int argc, char* argv[])
 
 		auto tmp = ts.origin_queue_.top(); ts.origin_queue_.pop(); auto second_best =  ts.origin_queue_.top(); ts.origin_queue_.push(tmp);
 
-		std::cout << " Best fitness: " << best_point.best_fitness << " Queue size: " <<ts.origin_queue_.size() << " queue top: " << ts.origin_queue_.top()->best_fitness << " second top: " << second_best->best_fitness; 
+		std::cout << " Best incapacity: " << best_point.best_incapacity << " Queue size: " <<ts.origin_queue_.size() << " queue top: " << ts.origin_queue_.top()->best_incapacity << " second top: " << second_best->best_incapacity; 
 	}
 
 	std::cout << std::endl;

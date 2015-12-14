@@ -44,11 +44,13 @@ int main(int argc, char* argv[])
 			out_mask.push_back(0);
 		for (int i=0; i<out_len; ++i)
 			out_mask.push_back(1);
+
 		assert(out_mask.size()==sample[0].size());
 
 		// Define starting point
 		PointId starting_point;
-		for (int i=0; i<num_vars-out_len; ++i)
+		//for (int i=0; i<num_vars-out_len; ++i)
+		for (int i=0; i<core_len; ++i)
 			starting_point.push_back(1);
 
 		Master master(mpi_size);

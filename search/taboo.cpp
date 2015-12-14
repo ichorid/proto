@@ -6,6 +6,7 @@
 #include <iostream>
 #include "easylogging++.h"
 
+#define MAX_DOUBLE pow(2.0, 1024)
 
 
 
@@ -19,7 +20,7 @@ TabooSearch::TabooSearch()
 		.sample_size = 0,
 		.sat_total = 0,
 		.best_cutoff = 0,
-		.best_fitness = 0
+		.best_incapacity = MAX_DOUBLE
 	};
 	checked_points_[point_zero] = ps;
 	global_record_=ps;
@@ -61,18 +62,18 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 		.sample_size = results.size(),
 		.sat_total = sat_scans.size(),
 		.best_cutoff = 0,
-		.best_fitness = 0
+		.best_incapacity = MAX_DOUBLE
 	};
 
-	// derive it's best fitness
-	int backdoor_size = CountOnes(point);
-	const double multi = pow(2.0, backdoor_size);	// backdoor size multiplier
+	// derive it's best incapacity
+	int S = CountOnes(point);
+	const double sz = pow(2.0, S);	// backdoor size multiplier
 	for (int i=0; i<sat_scans.size(); ++i){
-		double prob = (1+i)/ps->sample_size;	// predicted SAT probability
-		double cost = multi * sat_scans[i];	// backdoor cost
-		double fitness = prob / cost;		// fitness
-		if (fitness > ps->best_fitness){
-		       	ps->best_fitness = fitness;	// update local record
+		double t = sat_scans[i];
+		double p = (1+i)/ps->sample_size;	// predicted SAT probability
+		double incapacity = sz * t * 3/p ;
+		if (incapacity < ps->best_incapacity){
+		       	ps->best_incapacity = incapacity;	// update local record
 			ps->best_cutoff  = sat_scans[i];
 		}
 	}
@@ -80,10 +81,10 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	checked_points_[point] = ps;
 	origin_queue_.push(ps);
 
-	// Check and update global fitness record if necessary
-	if (ps->best_fitness > global_record_->best_fitness){
+	// Check and update global incapacity record if necessary
+	if (ps->best_incapacity < global_record_->best_incapacity){
 		global_record_= checked_points_[point]; // New record found !!!
-		LOG(INFO) <<" New record found  ("<< ps->best_fitness << ") : " << Point2Varstring (point) ;
+		LOG(INFO) <<" New record found  ("<< ps->best_incapacity << ") : " << Point2Varstring (point) ;
 	}
 }
 
@@ -91,7 +92,7 @@ PointId TabooSearch::GenerateNewPoint()
 {
 	std::vector <PointId> candidates;
 	for(;;){
-		// Select next origin candidate from top fitness queue
+		// Select next origin candidate from top incapacity queue
 		candidates = GetUncheckedHammingNbhd(
 				origin_queue_.top()->point_id);
 		if (candidates.size()>0) break;
@@ -114,10 +115,10 @@ PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& r
 	auto second_best =  *(&origin_queue_.top() + (origin_queue_.size()>1 ? 1:0)); // dirty pointer hack!!
 	LOG_EVERY_N(10, DEBUG) 
 		<< Point2Bitstring(point) 
-		<< " Best fitness: " << GetStats().best_fitness 
+		<< " Best incapacity: " << GetStats().best_incapacity 
 		<< " queue size: " <<origin_queue_.size() 
-		<< " queue top: " << origin_queue_.top()->best_fitness
-		<< " second top: " << second_best->best_fitness;
+		<< " queue top: " << origin_queue_.top()->best_incapacity
+		<< " second top: " << second_best->best_incapacity;
 
 	return GenerateNewPoint();
 }

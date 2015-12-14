@@ -6,21 +6,21 @@
 #include <queue>
 #include "common.h"
 
-// Comparator for point fitness queue. Works via pointers.
-class ComparePointFitness
+// Comparator for point incapacity queue. Works via pointers.
+class ComparePointIncapacity
 {
 	bool reverse;
 public:
-	ComparePointFitness(const bool& revparam=false) {reverse=revparam;}
+	ComparePointIncapacity(const bool& revparam=false) {reverse=revparam;}
 	bool operator() (const PointStats* lhs, const PointStats* rhs) const
 	{
 		if (reverse) 
-			return (lhs->best_fitness > rhs->best_fitness);
+			return (lhs->best_incapacity < rhs->best_incapacity);
 		else
-			return (lhs->best_fitness < rhs->best_fitness);
+			return (lhs->best_incapacity > rhs->best_incapacity);
 	}
 };
-typedef std::priority_queue <PointStats*, std::vector <PointStats*>, ComparePointFitness > BestFitnessQueue;
+typedef std::priority_queue <PointStats*, std::vector <PointStats*>, ComparePointIncapacity> BestIncapacityQueue;
 typedef std::unordered_map <PointId, PointStats*> PointStatsDB;
 
 inline std::string Point2Bitstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "0" : "1") ; return out;}
@@ -34,7 +34,7 @@ public:
 	PointId ProcessPointResults (const PointId& point, const Results& results);
 	void AddPointResults (const PointId& point, const Results& results);
 	PointStats GetStats();
-	BestFitnessQueue origin_queue_;
+	BestIncapacityQueue origin_queue_;
 private:
 	PointStatsDB checked_points_;
 	PointStats* global_record_ = NULL;

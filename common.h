@@ -40,7 +40,7 @@ typedef struct PointStats
 	long unsigned int sample_size;
 	long unsigned int sat_total;
 	long int best_cutoff; // best scans limit
-	double   best_fitness; 
+	double   best_incapacity; 
 } PointStats;
 
 // Some common UC manipulation functions
