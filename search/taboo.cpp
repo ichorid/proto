@@ -70,7 +70,7 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	const double sz = pow(2.0, S);	// backdoor size multiplier
 	for (int i=0; i<sat_scans.size(); ++i){
 		double t = sat_scans[i];
-		double p = (1+i)/ps->sample_size;	// predicted SAT probability
+		double p = double(1+i)/ps->sample_size;	// predicted SAT probability
 		double incapacity = sz * t * 3/p ;
 		if (incapacity < ps->best_incapacity){
 		       	ps->best_incapacity = incapacity;	// update local record
