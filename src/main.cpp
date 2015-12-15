@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "peer.h"
 #include "easylogging++.h"
+#include "tclap/CmdLine.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -16,24 +17,38 @@ int main(int argc, char* argv[])
 	defaultConf.setGlobally( el::ConfigurationType::Filename, "./fh.log");
 	el::Loggers::reconfigureLogger("default", defaultConf);
 
-
+	// Init MPI
 	MpiBase mpi_o(&argc, &argv); mpiS = &mpi_o;
 	int mpi_rank; MPI_Comm_rank (MPI_COMM_WORLD, &mpi_rank);
 	int mpi_size; MPI_Comm_size (MPI_COMM_WORLD, &mpi_size);
 
-	if (argc<4){
-	       	std::cout <<"Usage: <CNF_file> <scans_limit> <sample_size> <num_iterations> " <<std::endl;
-		exit(1);
-	}
+	// Search parameters
+	Cnf cnf;
+	int scans_limit;
+	int sample_size;
+	int num_iterations;
+	char filename[4096]; // Maximum Linux path length. No need to conserve bytes nowadays...
 
-	Cnf cnf; ReadCNFile(argv[1], cnf);
-	int scans_limit = atoi(argv[2]);
-	int sample_size = atoi(argv[3]);
-	int num_iterations =  atoi(argv[4]);
+	// Read command line parameters via TCLAP
+	try {
+		TCLAP::CmdLine cmd("This program is used to search for 'inverse backdoor sets'.", ' ', "0.1");
+		TCLAP::UnlabeledValueArg<std::string> filename_arg("filename","Path to SAT problem file in DIMACS CNF format.", true, "","CNF_FILENAME"); cmd.add( filename_arg);
+		TCLAP::ValueArg<int> scans_limit_arg("w", "scans", "Watched literal scans limit for individual solver process.", false, 200000,"SCANS_LIMIT"); cmd.add( scans_limit_arg);
+		TCLAP::ValueArg<int> sample_size_arg("s", "samplesize","Total sample size.", false, 10,"SAMPLE_SIZE"); cmd.add(sample_size_arg);
+		TCLAP::ValueArg<int> num_iterations_arg("i", "iter","Search iterations limit.", false, 1000,"ITERATIONS_LIMIT"); cmd.add(num_iterations_arg);
+		cmd.parse( argc, argv );
+
+		strcpy(filename, filename_arg.getValue().c_str()); // hackish!
+		scans_limit = scans_limit_arg.getValue();
+		sample_size = sample_size_arg.getValue();
+		num_iterations = num_iterations_arg.getValue() ;
+
+	}catch (TCLAP::ArgException &e){ 
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
 
 	int core_len = 177;
 	int out_len= 200;
-
+	ReadCNFile(filename, cnf);
 
 	if (mpi_rank==0){
 		// Generate sample
@@ -62,6 +77,4 @@ int main(int argc, char* argv[])
 	}
 
 	return 0;
-
-
 }
