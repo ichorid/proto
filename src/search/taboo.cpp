@@ -79,6 +79,8 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	}
 	// and add it to DB and origin candidates queue.
 	checked_points_[point] = ps;
+	if (sat_scans.size()<2)
+		return;
 	origin_queue_.push(ps);
 
 	// Check and update global incapacity record if necessary

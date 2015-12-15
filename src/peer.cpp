@@ -8,7 +8,7 @@
 #include "common.h"
 #include "peer.h"
 #include "wrappers/minisat22.h"
-#include <search/taboo.h>
+#include "search/taboo.h"
 #include "easylogging++.h"
 
 extern MpiBase* mpiS;

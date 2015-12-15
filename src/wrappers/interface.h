@@ -1,5 +1,5 @@
-#ifndef PROTO_WRAPPERS_INTERFACE_H_
-#define PROTO_WRAPPERS_INTERFACE_H_
+#ifndef WRAPPERS_INTERFACE_H_
+#define WRAPPERS_INTERFACE_H_
 #include "common.h"
 
 //Universal SAT solver wrapper interface definition

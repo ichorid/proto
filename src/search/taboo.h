@@ -1,5 +1,5 @@
-#ifndef PROTO_SEARCH_TABOO_H_
-#define PROTO_SEARCH_TABOO_H_
+#ifndef SEARCH_TABOO_H_
+#define SEARCH_TABOO_H_
 #include <random>
 #include <unordered_map>
 #include <vector>

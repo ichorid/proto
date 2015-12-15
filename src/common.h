@@ -1,5 +1,5 @@
-#ifndef PROTO_COMMON_H_
-#define PROTO_COMMON_H_
+#ifndef COMMON_H_
+#define COMMON_H_
 #include <vector>
 #include "assert.h"
 #include <string>

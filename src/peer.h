@@ -1,5 +1,5 @@
-#ifndef PROTO_PEER_H_
-#define PROTO_PEER_H_
+#ifndef PEER_H_
+#define PEER_H_
 #undef SEEK_SET
 #undef SEEK_END
 #undef SEEK_CUR

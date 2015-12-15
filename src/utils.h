@@ -1,5 +1,5 @@
-#ifndef PROTO_UTILS_H_
-#define PROTO_UTILS_H_
+#ifndef UTILS_H_
+#define UTILS_H_
 #include "common.h"
 #include <iostream>
 #include <fstream>
