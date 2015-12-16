@@ -24,7 +24,6 @@ TabooSearch::TabooSearch()
 	};
 	checked_points_[point_zero] = ps;
 	global_record_=ps;
-
 }
 
 TabooSearch::~TabooSearch()
@@ -79,7 +78,7 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	}
 	// and add it to DB and origin candidates queue.
 	checked_points_[point] = ps;
-	if (sat_scans.size()<2)
+	if (sat_scans.size()<sat_threshold_)
 		return;
 	origin_queue_.push(ps);
 

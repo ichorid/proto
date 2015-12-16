@@ -1,3 +1,4 @@
+#define ELPP_NO_DEFAULT_LOG_FILE
 #include "utils.h"
 #include "peer.h"
 #include "easylogging++.h"
@@ -11,7 +12,7 @@ int main(int argc, char* argv[])
 {
 	// Configure EasyLogger++
 	el::Configurations defaultConf;
-	defaultConf.setToDefault();
+	//defaultConf.setToDefault();
 	defaultConf.setGlobally( el::ConfigurationType::Format, "%datetime  %msg");
 	defaultConf.setGlobally( el::ConfigurationType::ToFile, "true");
 	defaultConf.setGlobally( el::ConfigurationType::Filename, "./fh.log");
@@ -27,6 +28,7 @@ int main(int argc, char* argv[])
 	int scans_limit;
 	int sample_size;
 	int num_iterations;
+	int sat_threshold;
 	char filename[4096]; // Maximum Linux path length. No need to conserve bytes nowadays...
 
 	// Read command line parameters via TCLAP
@@ -36,12 +38,14 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<int> scans_limit_arg("w", "scans", "Watched literal scans limit for individual solver process.", false, 200000,"SCANS_LIMIT"); cmd.add( scans_limit_arg);
 		TCLAP::ValueArg<int> sample_size_arg("s", "samplesize","Total sample size.", false, 10,"SAMPLE_SIZE"); cmd.add(sample_size_arg);
 		TCLAP::ValueArg<int> num_iterations_arg("i", "iter","Search iterations limit.", false, 1000,"ITERATIONS_LIMIT"); cmd.add(num_iterations_arg);
+		TCLAP::ValueArg<int> sat_threshold_arg("t", "thresh","Ignore point results if less than this number of units were solved.", false, 1,"SAT_THRESH"); cmd.add(sat_threshold_arg);
 		cmd.parse( argc, argv );
 
 		strcpy(filename, filename_arg.getValue().c_str()); // hackish!
 		scans_limit = scans_limit_arg.getValue();
 		sample_size = sample_size_arg.getValue();
 		num_iterations = num_iterations_arg.getValue() ;
+		sat_threshold = sat_threshold_arg.getValue() ;
 
 	}catch (TCLAP::ArgException &e){ 
 		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
@@ -69,6 +73,7 @@ int main(int argc, char* argv[])
 			starting_point.push_back(1);
 
 		Master master(mpi_size);
+		master.search_engine_.sat_threshold_= sat_threshold;
 		master.Search(num_iterations, starting_point, out_mask, sample);
 		master.SendExitSignal();
 	}else{

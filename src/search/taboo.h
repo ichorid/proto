@@ -35,6 +35,7 @@ public:
 	void AddPointResults (const PointId& point, const Results& results);
 	PointStats GetStats();
 	BestIncapacityQueue origin_queue_;
+	int sat_threshold_ = 1;
 private:
 	PointStatsDB checked_points_;
 	PointStats* global_record_ = NULL;
