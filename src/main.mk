@@ -11,7 +11,7 @@ SOURCES := \
 	main.cpp
 
 BUILD_DIR := ../build
-CXXFLAGS := -g -std=c++11 -O0 
+CXXFLAGS := -g -std=c++11 -O5 
 
 DEFS := __STDC_LIMIT_MACROS __STDC_FORMAT_MACROS 
 

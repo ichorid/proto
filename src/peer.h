@@ -54,6 +54,7 @@ public:
 	void Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
+	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample  sample);
 	void SendExitSignal();

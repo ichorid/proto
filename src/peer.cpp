@@ -84,12 +84,13 @@ void Worker::MainJobCycle()
 void Master::Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
+	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample  sample)
 {
 	PointId current_point = starting_point;
 	for (int i=0; i<num_iterations; ++i){
-		Task t = GenTask (BM_or (current_point, out_mask), sample);
+		Task t = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample);
 		Results r = ProcessTask (t);
 		current_point = search_engine_.ProcessPointResults(current_point, r);
 	}

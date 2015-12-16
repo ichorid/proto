@@ -22,7 +22,8 @@ bool Match(IStream& in, const char *str);
 int  ParseInt(IStream& in);
 void ReadClause(IStream& in, Clause& cla);
 void ReadCNF(IStream& in, Cnf& cnf);
-void ReadCNFile(const char* file_name, Cnf& cnf);
+void ReadCNFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int> > & var_layers );
+void ReadCNFile(const char* file_name, Cnf& cnf );
 void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size);
 
 #endif

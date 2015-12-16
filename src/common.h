@@ -3,6 +3,7 @@
 #include <vector>
 #include "assert.h"
 #include <string>
+#include <algorithm>
 
 typedef int Lit;
 typedef int Var;
@@ -51,6 +52,16 @@ inline BitMask BM_or(const BitMask& a, const BitMask& b)
 	auto out = ab ? a : b;
 	for (int i =0; i< (ab ? b.size() : a.size()); ++i)
 		out[i] = a[i] | b[i];
+	return out;
+}
+
+inline BitMask ExpandBM(const BitMask& m, const std::vector <int>& v)
+{
+	assert(m.size()==v.size());
+	const int out_size = *std::max_element(v.begin(), v.end());
+	BitMask out(out_size,0);
+	for (int i=0; i<m.size(); ++i)
+		out[v[i]-1]=m[i];
 	return out;
 }
 

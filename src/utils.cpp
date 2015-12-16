@@ -50,19 +50,28 @@ void ReadClause(IStream& in, Clause& cla)
 	}
 }
 
-void ReadCNF(IStream& in, Cnf& cnf)
+void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_layers )
 {
 	for(;;){
 		SkipWhitespace(in);
 		if(in.eof()) break;
-		//заголовок DIMACS-файла
 		else if((*in == 'p') && Match(in, "p cnf")){
 			SkipLine(in);
-		}
-		//пропускаем комментарии
-		else if(*in == 'c')
+		}else if(*in == 'c'){
+			if (Match(in, "c begin_layers_list")){
+				SkipLine(in);
+				//std::cout<< std::endl << "LAYERS BEGIN";
+				while (false==Match(in, "c stop_layers_list")){
+					//std::cout<< std::endl << "LAYER";
+					Clause layer;
+					//++in; // skip 'c'
+					ReadClause(in, layer);
+					var_layers.push_back(layer);
+					SkipLine(in);
+				}
+			}
 			SkipLine(in);
-		else{
+		}else{
 			Clause cla;
 			ReadClause(in, cla);
 			cnf.push_back(cla);
@@ -71,7 +80,7 @@ void ReadCNF(IStream& in, Cnf& cnf)
 	}
 }
 
-void ReadCNFile(const char* file_name, Cnf& cnf)
+void ReadCNFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int> > & var_layers )
 {
 	std::ifstream file(file_name, std::ios::in);
 
@@ -80,9 +89,16 @@ void ReadCNFile(const char* file_name, Cnf& cnf)
 		exit(1);
 	}
 	IStream in(file);
-	ReadCNF(in, cnf);
+	ReadCNF(in, cnf, var_layers);
 	file.close();
 }
+
+void ReadCNFile(const char* file_name, Cnf& cnf ) 
+{ 
+	std::vector < std::vector <int> > dummy_layers; 
+	ReadCNFile(file_name, cnf, dummy_layers); 
+}
+
 
 void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
 {
