@@ -61,7 +61,7 @@ void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_laye
 			if (Match(in, "c begin_layers_list")){
 				SkipLine(in);
 				//std::cout<< std::endl << "LAYERS BEGIN";
-				while (false==Match(in, "c stop_layers_list")){
+				while (false==Match(in, "c end_layers_list")){
 					//std::cout<< std::endl << "LAYER";
 					Clause layer;
 					//++in; // skip 'c'

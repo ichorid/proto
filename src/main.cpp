@@ -68,6 +68,7 @@ int main(int argc, char* argv[])
 		for (int i=0; i<core_len; ++i)
 			guessing_vars.push_back(i+1);
 	}else{
+		assert(guessing_layer<var_layers.size());
 		guessing_vars = var_layers[guessing_layer];
 	}
 
@@ -83,7 +84,6 @@ int main(int argc, char* argv[])
 
 		// Define starting point
 		PointId starting_point;
-		//for (int i=0; i<num_vars-out_len; ++i)
 		for (int i=0; i<guessing_vars.size(); ++i)
 			starting_point.push_back(1);
 
