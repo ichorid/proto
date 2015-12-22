@@ -88,11 +88,16 @@ void Master::Search(
 	       	const BitMask out_mask,
 	      	const Sample  sample)
 {
-	PointId current_point = starting_point;
+	std::vector <PointId> nbh_list;
+	nbh_list.push_back(starting_point);
+
 	for (int i=0; i<num_iterations; ++i){
-		Task t = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample);
-		Results r = ProcessTask (t);
-		current_point = search_engine_.ProcessPointResults(current_point, r);
+		for (auto current_point : nbh_list){
+			Task t = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample);
+			Results r = ProcessTask(t);
+			search_engine_.AddPointResults(current_point, r);
+		}
+		nbh_list=search_engine_.GenerateNewPoint();
 	}
 }
 

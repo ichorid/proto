@@ -36,12 +36,12 @@ public:
 	PointStats GetStats();
 	BestIncapacityQueue origin_queue_;
 	int sat_threshold_ = 1;
+	std::vector<PointId> GenerateNewPoint();
 private:
 	PointStatsDB checked_points_;
 	PointStats* global_record_ = NULL;
 	std::mt19937 rng;
 
-	PointId GenerateNewPoint();
 	//void LoadNewSample (int sample_size);
 
 	// Service methods

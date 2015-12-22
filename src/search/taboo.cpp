@@ -94,7 +94,7 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	}
 }
 
-PointId TabooSearch::GenerateNewPoint()
+std::vector <PointId> TabooSearch::GenerateNewPoint()
 {
 	std::vector <PointId> candidates;
 	for(;;){
@@ -110,9 +110,10 @@ PointId TabooSearch::GenerateNewPoint()
 	// Shuffle candidate points to even their probabilities
 	std::shuffle(candidates.begin(), candidates.end(), rng);
 
-	return candidates[0];
+	return candidates;
 }
 
+/*
 PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& results)
 {
 	AddPointResults(point, results);
@@ -130,6 +131,7 @@ PointId TabooSearch::ProcessPointResults (const PointId& point, const Results& r
 
 	return GenerateNewPoint();
 }
+*/
 
 PointStats TabooSearch::GetStats()
 {
