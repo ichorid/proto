@@ -38,16 +38,30 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 	std::vector<PointId> result;
 	for (int i =0; i<point.size(); ++i){
 		PointId tmp = point;
-		FlipBit(tmp[i]);
-		//tmp[i]=0;
+		//FlipBit(tmp[i]);
+		tmp[i]=0;
 		if (!PointChecked(tmp))
 			result.push_back(tmp);
 	}
 	return result;
 }
 
-void TabooSearch::AddPointResults (const PointId& point, const Results& results)
+void TabooSearch::AddPointResults (const PointId& point, const Results& results, const Results& results_wrong)
 {
+
+	std::vector <long long int> wrong_scans;
+	int unsat_wrongs=0;
+	for (auto ur: results_wrong){
+		wrong_scans.push_back(ur.watch_scans);
+		if (ur.state==UNSAT)
+			unsat_wrongs++;
+		//std::cout << "S: " << ur.state;
+	}
+	std::sort(wrong_scans.begin(), wrong_scans.end());
+	long long int scans_limit= wrong_scans.back(); // FIXME: Should get from global vars instead
+
+
+
 	// Filter SATs and sort their scans values
 	std::vector <long long int> sat_scans;
 	for (auto report: results)
@@ -69,6 +83,21 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	const double sz = pow(2.0, S);	// backdoor size multiplier
 	for (int i=0; i<sat_scans.size(); ++i){
 		double t = sat_scans[i];
+
+
+		long long int wrong_scans_total=0;
+		for(int j=0; j<wrong_scans.size(); j++){
+			if (wrong_scans[j]<t)
+				wrong_scans_total+=wrong_scans[j];
+			else{
+				wrong_scans_total+= t*(wrong_scans.size()-j); // Clamp to t
+				break;
+			}
+		}
+		double koeff =((double)wrong_scans_total / (double) (t*wrong_scans.size()));
+		t *=koeff ;
+		LOG_EVERY_N(10, DEBUG) << "unsat_wrongs: "<< unsat_wrongs << ".  point koeff: " << koeff;
+
 		double p = double(1+i)/ps->sample_size;	// predicted SAT probability
 		double incapacity = sz * t * 3/p ;
 		if (incapacity < ps->best_incapacity){

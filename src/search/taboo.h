@@ -32,7 +32,7 @@ public:
 	TabooSearch();
 	~TabooSearch();
 	PointId ProcessPointResults (const PointId& point, const Results& results);
-	void AddPointResults (const PointId& point, const Results& results);
+	void AddPointResults (const PointId& point, const Results& results, const Results& results_wrong);
 	PointStats GetStats();
 	BestIncapacityQueue origin_queue_;
 	int sat_threshold_ = 1;

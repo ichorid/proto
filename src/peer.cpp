@@ -91,11 +91,26 @@ void Master::Search(
 	std::vector <PointId> nbh_list;
 	nbh_list.push_back(starting_point);
 
+	std::random_device rng;
+	std::mt19937 mt(rng());
+	std::uniform_int_distribution<int> rnd_bit(0,1);
+
+	Sample sample_wrong = sample;
+	for (auto &unit: sample_wrong)
+		for (int i=0; i<unit.size(); ++i){
+			if(0==out_mask[i])
+				unit[i]=unit[i]*(1-2*rnd_bit(mt));
+		}
+
 	for (int i=0; i<num_iterations; ++i){
 		for (auto current_point : nbh_list){
 			Task t = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample);
 			Results r = ProcessTask(t);
-			search_engine_.AddPointResults(current_point, r);
+
+			Task t_wrong = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample_wrong);
+			Results r_wrong = ProcessTask(t_wrong);
+
+			search_engine_.AddPointResults(current_point, r, r_wrong);
 		}
 		nbh_list=search_engine_.GenerateNewPoint();
 	}
