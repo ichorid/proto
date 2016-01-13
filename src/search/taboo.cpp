@@ -15,6 +15,7 @@ TabooSearch::TabooSearch()
 	std::random_device rnd_dev;
 	rng.seed(rnd_dev());
 	PointId point_zero = PointId();
+	// fixme: лучше сделать конструктор по-умолчанию
 	PointStats* ps = new PointStats {
 		.point_id = point_zero,
 		.sample_size = 0,
@@ -22,8 +23,9 @@ TabooSearch::TabooSearch()
 		.best_cutoff = 0,
 		.best_incapacity = MAX_DOUBLE
 	};
+	// fixme: зачем пустая строка??
 	checked_points_[point_zero] = ps;
-	global_record_=ps;
+	global_record_ = ps;
 }
 
 TabooSearch::~TabooSearch()
@@ -36,12 +38,15 @@ TabooSearch::~TabooSearch()
 std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 {
 	std::vector<PointId> result;
-	for (int i =0; i<point.size(); ++i){
+	for (int i = 0; i < point.size(); ++i)
+	{
 		PointId tmp = point;
 		FlipBit(tmp[i]);
 		//tmp[i]=0;
 		if (!PointChecked(tmp))
+		{
 			result.push_back(tmp);
+		}
 	}
 	return result;
 }
@@ -49,6 +54,7 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 {
 	// Filter SATs and sort their scans values
+	// fixme: лучше использовать uint64_t
 	std::vector <long long int> sat_scans;
 	for (auto report: results)
 		if (report.state==SAT)
@@ -67,37 +73,45 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 	// derive it's best incapacity
 	int S = CountOnes(point);
 	const double sz = pow(2.0, S);	// backdoor size multiplier
-	for (int i=0; i<sat_scans.size(); ++i){
+	for (int i = 0; i < sat_scans.size(); ++i)
+	{
 		double t = sat_scans[i];
 		double p = double(1+i)/ps->sample_size;	// predicted SAT probability
-		double incapacity = sz * t * 3/p ;
-		if (incapacity < ps->best_incapacity){
-		       	ps->best_incapacity = incapacity;	// update local record
+		double incapacity = sz * t * 3/p;
+		if (incapacity < ps->best_incapacity)
+		{
+			ps->best_incapacity = incapacity;	// update local record
 			ps->best_cutoff  = sat_scans[i];
 		}
 	}
 	// and add it to DB and origin candidates queue.
 	checked_points_[point] = ps;
+
 	if (sat_scans.size()<sat_threshold_)
 		return;
+
 	origin_queue_.push(ps);
 
 	// Check and update global incapacity record if necessary
-	if (ps->best_incapacity < global_record_->best_incapacity){
+	if (ps->best_incapacity < global_record_->best_incapacity)
+	{
 		global_record_= checked_points_[point]; // New record found !!!
-		LOG(INFO) << " New record found: " 
+		LOG(INFO) << " New record found: "
 			<< CountOnes(point) << " "
-			<< ps->best_incapacity << " "    
+			<< ps->best_incapacity << " "
 			<< sat_scans.size() << " "
 			<< Point2Bitstring(point) << " ccc "
-			<< Point2Varstring(point) ;
+			<< Point2Varstring(point);
 	}
 }
 
 PointId TabooSearch::GenerateNewPoint()
 {
 	std::vector <PointId> candidates;
-	for(;;){
+	// fixme: почему такая странная организация цикла?
+	// означает ли это, что в origin_queue_ могут оказаться проверенные точки??
+	for(;;)
+	{
 		// Select next origin candidate from top incapacity queue
 		candidates = GetUncheckedHammingNbhd(
 				origin_queue_.top()->point_id);
@@ -107,6 +121,9 @@ PointId TabooSearch::GenerateNewPoint()
 		origin_queue_.pop();
 		LOG(DEBUG) << " ORIGIN POP!";
 	}
+
+	// fixme: не проще ли случайно выбрать индекс??
+
 	// Shuffle candidate points to even their probabilities
 	std::shuffle(candidates.begin(), candidates.end(), rng);
 

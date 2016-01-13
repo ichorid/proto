@@ -8,12 +8,14 @@
 typedef int Lit;
 typedef int Var;
 typedef std::vector <Lit> Clause;
-typedef Clause UnitClauseVector;
+typedef Clause UnitClauseVector; // fixme: плодим сущности ?
 typedef std::vector <UnitClauseVector> Sample;
 typedef std::vector <UnitClauseVector> Task;
 typedef UnitClauseVector Assignment; // TODO: move me to separate file!
 typedef std::vector <Clause> Cnf;
-typedef enum {
+
+typedef enum
+{
 	UNINITIALIZED,
 	INITIALIZED,
 	STOPPED,
@@ -26,15 +28,24 @@ typedef enum {
 typedef struct SolverReport
 {
 	SWState state;
+	// fixme: лучше использовать uint64_t
 	int watch_scans;
 } SolverReport;
+
 typedef std::vector <SolverReport> Results;
 
+// fixme: номер переменной - абсолютное значение?
+// почему возвращаем int, а не Var?
 inline int var(Lit l) { return (l>=0?l:(-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
+// fixme: зачем по ссылке передавать?
 inline char FlipBit(char& bit){ return  bit^=1;}
 
 typedef std::string PointId;
+// fixme: лучше использовать std::vector<char> вместо std::string
 typedef std::string BitMask;
+
+// fixme: определять структуры по человечески + добавить конструкторы.
+// fixme: лучше использовать платформо независимые типы: std::uint64_t
 typedef struct PointStats
 {
 	PointId  point_id;
@@ -50,7 +61,7 @@ inline BitMask BM_or(const BitMask& a, const BitMask& b)
 {
 	bool ab = a.size() > b.size();
 	auto out = ab ? a : b;
-	for (int i =0; i< (ab ? b.size() : a.size()); ++i)
+	for (int i = 0; i < (ab ? b.size() : a.size()); ++i)
 		out[i] = a[i] | b[i];
 	return out;
 }
@@ -88,9 +99,9 @@ inline Task GenTask(const BitMask& mask, const Sample& sample)
 
 inline int CountOnes(const std::string& str)
 {
-	int out=0;
+	int out = 0;
 	for (auto ch: str)
-		out+=(ch==1);
+		out += (ch == 1);
 	return out;
 }
 /*
