@@ -4,6 +4,7 @@
 #include <random>
 #include "search/taboo.h"
 #include <iostream>
+#include <iomanip>
 #include "easylogging++.h"
 
 #define MAX_DOUBLE pow(2.0, 1024)
@@ -67,11 +68,10 @@ void TabooSearch::AddPointResults (const PointResults& results)
 
 	// derive it's best incapacity
 	int S = CountOnes(point);
-	const double sz = pow(2.0, S);	// backdoor size multiplier
 	for (int i=0; i<sat_scans.size(); ++i){
 		double t = sat_scans[i];
 		double p = double(1+i)/ps->sample_size;	// predicted SAT probability
-		double incapacity = sz * t * 3/p ;
+		double incapacity = S + log2(t * 3/p) ;
 		if (incapacity < ps->best_incapacity){
 		       	ps->best_incapacity = incapacity;	// update local record
 			ps->best_cutoff  = sat_scans[i];
@@ -87,9 +87,11 @@ void TabooSearch::AddPointResults (const PointResults& results)
 	if (ps->best_incapacity < global_record_->best_incapacity){
 		global_record_= checked_points_[point]; // New record found !!!
 		LOG(INFO) << " New record found: " 
-			<< CountOnes(point) << " "
-			<< ps->best_incapacity << " "    
-			<< sat_scans.size() << " "
+			<< std::setw(5) << CountOnes(point) << " "
+			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
+			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+			<< std::setw(5) << sat_scans.size() << " /" 
+			<< std::setw(5) << results.reps.size() << " " 
 			<< Point2Bitstring(point) << " ccc "
 			<< Point2Varstring(point) ;
 	}
