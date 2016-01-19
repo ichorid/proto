@@ -109,7 +109,7 @@ void Master::Search(
 		{
 			search_engine_.AddPointResults(result);
 		}
-		probe_points = search_engine_.GenerateNewPoints(); 
+		probe_points = search_engine_.GenerateNewPoints(1); 
 	}
 }
 
@@ -143,22 +143,24 @@ std::vector <PointResults> Master::ProcessTasks(const std::vector <Task> &tasks)
 std::vector <SolverReport> Master::ProcessTaskUnits(const std::vector <UnitClauseVector> &units)
 {
 	std::vector <SolverReport> out(units.size());
-	std::vector <int> worker2unitnum(free_workers_.size());
-	for (int i=0; i < out.size(); ++i)
+	std::vector <int> worker2unitnum(free_workers_.size()+1);
+	for (int i=0, j=0; i < out.size(); ++i)
 	{
 		// Send work until free_workers stack depletes or there
 		// are no units left
-		while (free_workers_.size()>0 && i<out.size()){
+		while (free_workers_.size()>0 && j < out.size()){
 			int workernum = GetWorker();
-			worker2unitnum[workernum] = i;
-			GiveoutAssignment(workernum, units.back()); 
+			worker2unitnum[workernum] = j;
+			GiveoutAssignment(workernum, units[j]); 
+			++j;
 		}
-		if (units[0].size()==0) break; // Special case - stop signal task
+		if (units[0].size()==0) return out; // Special case - stop signal task
 		// Wait for a report from worker and add it's id to
 		// free_workers stack immediately.
 		auto report = RecieveAndRegister();
 		out[worker2unitnum[free_workers_.back()]]=report;
 	};
+	assert (free_workers_.size()==(worker2unitnum.size()-1));
 	return out;
 }
 
@@ -181,8 +183,7 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 	// Achtung! Pointer trick should work only for std::vector containers!!!
 	// TODO: make some kind of comiler assert to check if we're
 	// actually using std::vector and not some other container !!!
-	MPI_Send(&asn[0], msg_len, MPI_INT, target, data_tag_,
-		       	MPI_COMM_WORLD);
+	MPI_Send(&asn[0], msg_len, MPI_INT, target, data_tag_, MPI_COMM_WORLD);
 }
 
 void Master::SendExitSignal()
