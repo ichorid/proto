@@ -28,11 +28,12 @@ int main(int argc, char* argv[])
 	int sample_size;
 	int num_iterations;
 	int sat_threshold;
+	int num_points;
 	char filename[4096]; // Maximum Linux path length. No need to conserve bytes nowadays...
 
 	int core_len;
 	int out_len;
-	int guessing_layer ;
+	int guessing_layer;
 	std::vector <int> guessing_vars;
 	// Read command line parameters via TCLAP
 	try {
@@ -43,6 +44,7 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<int> sample_size_arg	("s", "samplesize","Total sample size.", false, 10,"SAMPLE_SIZE"); cmd.add(sample_size_arg);
 		TCLAP::ValueArg<int> num_iterations_arg	("i", "iter","Search iterations limit.", false, 1000,"ITERATIONS_LIMIT"); cmd.add(num_iterations_arg);
 		TCLAP::ValueArg<int> sat_threshold_arg	("t", "thresh","Ignore point results if less than this number of units were solved.", false, 1,"SAT_THRESH"); cmd.add(sat_threshold_arg);
+		TCLAP::ValueArg<int> num_points_arg	("p", "points","Check this number of points before making next step.", false, 1,"SCAN_POINTS"); cmd.add(num_points_arg);
 		TCLAP::ValueArg<int> corelen_arg	("c", "corelen","Num of core vars.", true, 0,"CORE_LEN"); cmd.add(corelen_arg);
 		TCLAP::ValueArg<int> outlen_arg		("o", "outlen","Num of out vars.", true, 0,"OUT_LEN"); cmd.add(outlen_arg);
 		TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER"); cmd.add(guessing_layer_arg);
@@ -56,6 +58,7 @@ int main(int argc, char* argv[])
 		core_len = corelen_arg.getValue();
 		out_len = outlen_arg.getValue();
 		guessing_layer = guessing_layer_arg.getValue();
+		num_points = num_points_arg.getValue();
 
 	}catch (TCLAP::ArgException &e){ 
 		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
@@ -89,7 +92,7 @@ int main(int argc, char* argv[])
 
 		Master master(mpi_size);
 		master.search_engine_.sat_threshold_= sat_threshold;
-		master.Search(num_iterations, starting_point, guessing_vars, out_mask, sample);
+		master.Search(num_iterations, starting_point, guessing_vars, out_mask, sample, num_points);
 		master.SendExitSignal();
 
 	}else{

@@ -101,10 +101,11 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 {
 	// ACHTUNG!  Dequeues priority_queue in process!!
 	std::vector <PointId> candidates;
+	int levels = 0;
+	std::queue <PointStats*> tmp_queue;
 	for(;;){
 		// Select next origin candidate from top incapacity queue
-		auto nbhd = GetUncheckedHammingNbhd(
-				origin_queue_.top()->point_id);
+		auto nbhd = GetUncheckedHammingNbhd(origin_queue_.top()->point_id);
 		if (nbhd.size()==0){
 			// All origin's neighbours were already checked, so
 			// we remove it from queue
@@ -112,24 +113,36 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 			LOG(DEBUG) << " ORIGIN POP!";
 			continue;
 		}
+		++levels;
+		std::shuffle(nbhd.begin(), nbhd.end(), rng); 
+
+		int slice_size = (((desired_candidates>>levels) > 1) ? (desired_candidates>>levels) : 1);
+		//	LOG(DEBUG) << " SSIZE " << slice_size ;
+		if (slice_size < nbhd.size())
+		{
+			nbhd.resize(slice_size); // Logarithmic levels distibution
+		}
+
 		// Append nbhd to candidates
 		std::move(nbhd.begin(), nbhd.end(), std::inserter(candidates, candidates.end()));
 
  		// Enough candidates found
 		if (candidates.size()>=desired_candidates)
 		{ 
-			if (candidates.size()==desired_candidates) 
-			{
-				origin_queue_.pop(); // Just for safety
-				LOG(DEBUG) << " ORIGIN POP!";
-			}
-			// Shuffle last nbhd batch to avoid bias
-			std::shuffle(candidates.end()-nbhd.size(), candidates.end(), rng); 
 			break;
 		}
-		origin_queue_.pop();
-		LOG(DEBUG) << " ORIGIN POP!";
+		// Dig deeper into prio queue
+		if (origin_queue_.size()>1)
+		{
+			tmp_queue.push(origin_queue_.top());origin_queue_.pop();
+		}
 	}
+	// Restore prio queue
+	while (tmp_queue.size()>0)
+	{
+		origin_queue_.push(tmp_queue.back()); tmp_queue.pop();
+	}
+
 	candidates.resize(desired_candidates);
 
 	return candidates;

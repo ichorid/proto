@@ -109,7 +109,7 @@ void Master::Search(
 		{
 			search_engine_.AddPointResults(result);
 		}
-		probe_points = search_engine_.GenerateNewPoints(1); 
+		probe_points = search_engine_.GenerateNewPoints(num_points); 
 	}
 }
 
