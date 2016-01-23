@@ -90,8 +90,38 @@ void Master::Search(
 		const int num_points)
 {
 	std::vector <PointId> probe_points;
-	probe_points.push_back(starting_point); // FIXME
-	for (int i=0; i<num_iterations; ++i)
+	//probe_points.push_back(starting_point); // FIXME
+
+
+	// Stage 1: bottom-up climb
+	const int try_points = 10;
+	for (int iter=4; iter<num_iterations; ++iter)
+	{
+		probe_points = (search_engine_.GenerateRandomPoints(iter, num_points/try_points, guessing_vars.size()));
+		std::vector <Task> all_tasks;
+		for (auto point: probe_points)
+		{
+			Task t =
+			{
+				.id = point,
+				.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
+			};
+			t.units.resize(try_points);
+			all_tasks.push_back(t); // FIXME: resize sample BEFORE generation
+		}
+
+		std::vector <PointResults> all_results = ProcessTasks (all_tasks);
+		for (auto result: all_results)
+		{
+			search_engine_.AddPointResults(result);
+		}
+		if (search_engine_.origin_queue_.size()>0)
+			break;
+	}
+	probe_points = search_engine_.GenerateNewPoints(num_points); 
+
+	// Stage2 2: Search
+	for (int iter=0; iter<num_iterations; ++iter)
 	{
 		std::vector <Task> all_tasks;
 		for (auto point: probe_points)

@@ -5,6 +5,7 @@
 #include "search/taboo.h"
 #include <iostream>
 #include <iomanip>
+#include <unordered_set>
 #include "easylogging++.h"
 
 #define MAX_DOUBLE pow(2.0, 1024)
@@ -39,8 +40,8 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 	std::vector<PointId> result;
 	for (int i =0; i<point.size(); ++i){
 		PointId tmp = point;
-		FlipBit(tmp[i]);
-		//tmp[i]=0;
+		//FlipBit(tmp[i]);
+		tmp[i]=0;
 		if (!PointChecked(tmp))
 			result.push_back(tmp);
 	}
@@ -93,7 +94,7 @@ void TabooSearch::AddPointResults (const PointResults& results)
 			<< std::setw(5) << sat_scans.size() << " /" 
 			<< std::setw(5) << results.reps.size() << " " 
 			<< Point2Bitstring(point) << " ccc "
-			<< Point2Varstring(point) ;
+			<< Point2Varstring(point) ; // FIXME: expand vars according to the mask
 	}
 }
 
@@ -110,7 +111,7 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 			// All origin's neighbours were already checked, so
 			// we remove it from queue
 			origin_queue_.pop();
-			LOG(DEBUG) << " ORIGIN POP!";
+			//LOG(DEBUG) << " ORIGIN POP!";
 			continue;
 		}
 		++levels;
@@ -147,6 +148,23 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 
 	return candidates;
 }
+
+std::vector <PointId> TabooSearch::GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size )
+{
+	std::unordered_set <PointId> candidates;
+	while (candidates.size()<desired_candidates)
+	{
+		PointId point;
+		for (int i = 0; i < point_size; ++i)
+			point.push_back( i < num_ones ? 1 : 0);
+		std::shuffle(point.begin(), point.end(), rng); 
+		if (!PointChecked(point) && candidates.count(point) == 0)
+			candidates.insert(point);
+		//FIXME: add safety checks!
+	}
+	return std::vector <PointId> (candidates.begin(), candidates.end());
+}
+
 
 /*
 void TabooSearch::ProcessPointResults (const PointId& point, const Results& results)

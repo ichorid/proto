@@ -37,6 +37,7 @@ public:
 	BestIncapacityQueue origin_queue_;
 	int sat_threshold_ = 1;
 	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1);
+	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size );
 private:
 	PointStatsDB checked_points_;
 	PointStats* global_record_ = NULL;
