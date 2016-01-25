@@ -79,6 +79,8 @@ void TabooSearch::AddPointResults (const PointResults& results)
 		}
 	}
 	// and add it to DB and origin candidates queue.
+
+	assert (checked_points_.count(point)==0);
 	checked_points_[point] = ps;
 	if (sat_scans.size()<sat_threshold_)
 		return;
@@ -102,7 +104,7 @@ void TabooSearch::AddPointResults (const PointResults& results)
 std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates )
 {
 	// ACHTUNG!  Dequeues priority_queue in process!!
-	std::vector <PointId> candidates;
+	std::unordered_set <PointId> candidates;
 	int levels = 0;
 	std::queue <PointStats*> tmp_queue;
 	for(;;)
@@ -128,7 +130,9 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 			nbhd.resize(slice_size); // Logarithmic levels distibution
 
 		// Append nbhd to candidates
-		std::move(nbhd.begin(), nbhd.end(), std::inserter(candidates, candidates.end()));
+		for (auto cand: nbhd)
+			if(candidates.count(cand) == 0)
+				candidates.insert(cand);
 
  		// Enough candidates found
 		if (candidates.size()>=desired_candidates)
@@ -145,10 +149,10 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 	{
 		origin_queue_.push(tmp_queue.back()); tmp_queue.pop();
 	}
+	std::vector <PointId> cand_vec (candidates.begin(), candidates.end());
+	cand_vec.resize(desired_candidates);
 
-	candidates.resize(desired_candidates);
-
-	return candidates;
+	return cand_vec;
 }
 
 std::vector <PointId> TabooSearch::GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size )
