@@ -91,6 +91,7 @@ void TabooSearch::AddPointResults (const PointResults& results)
 			<< std::setw(5) << CountOnes(point) << " "
 			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
 			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
 			<< std::setw(5) << sat_scans.size() << " /" 
 			<< std::setw(5) << results.reps.size() << " " 
 			<< Point2Bitstring(point) << " ccc "
@@ -104,14 +105,18 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 	std::vector <PointId> candidates;
 	int levels = 0;
 	std::queue <PointStats*> tmp_queue;
-	for(;;){
+	for(;;)
+	{
 		// Select next origin candidate from top incapacity queue
 		auto nbhd = GetUncheckedHammingNbhd(origin_queue_.top()->point_id);
-		if (nbhd.size()==0){
+		if (nbhd.size()==0)
+		{
 			// All origin's neighbours were already checked, so
 			// we remove it from queue
+			auto oldtop = origin_queue_.top();
 			origin_queue_.pop();
-			//LOG(DEBUG) << " ORIGIN POP!";
+			auto newtop = origin_queue_.top();
+			LOG(DEBUG) << " ORIGIN POP! HD: " << std::setw(5) << CountOnes(BM_xor(oldtop->point_id, newtop->point_id));
 			continue;
 		}
 		++levels;
@@ -120,22 +125,19 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 		int slice_size = (((desired_candidates>>levels) > 1) ? (desired_candidates>>levels) : 1);
 		//	LOG(DEBUG) << " SSIZE " << slice_size ;
 		if (slice_size < nbhd.size())
-		{
 			nbhd.resize(slice_size); // Logarithmic levels distibution
-		}
 
 		// Append nbhd to candidates
 		std::move(nbhd.begin(), nbhd.end(), std::inserter(candidates, candidates.end()));
 
  		// Enough candidates found
 		if (candidates.size()>=desired_candidates)
-		{ 
 			break;
-		}
 		// Dig deeper into prio queue
 		if (origin_queue_.size()>1)
 		{
-			tmp_queue.push(origin_queue_.top());origin_queue_.pop();
+			tmp_queue.push(origin_queue_.top());
+			origin_queue_.pop();
 		}
 	}
 	// Restore prio queue

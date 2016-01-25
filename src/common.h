@@ -67,6 +67,14 @@ inline BitMask BM_or(const BitMask& a, const BitMask& b)
 	return out;
 }
 
+inline BitMask BM_xor(const BitMask& a, const BitMask& b)
+{
+	bool ab = a.size() > b.size();
+	auto out = ab ? a : b;
+	for (int i =0; i< (ab ? b.size() : a.size()); ++i)
+		out[i] = a[i] ^ b[i];
+	return out;
+}
 /*
 inline std::vector<BitMask> BM_or(const std::vector<BitMask>& a, const BitMask& b)
 {
