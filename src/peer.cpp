@@ -11,6 +11,8 @@
 #include "search/taboo.h"
 #include "easylogging++.h"
 
+#define TINY_SAMPLE_SIZE 10
+
 extern MpiBase* mpiS;
 
 // Here we describe our datastructures to MPI
@@ -80,7 +82,6 @@ void Worker::MainJobCycle()
 
 
 /* Master methods */
-
 void Master::Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
@@ -89,88 +90,72 @@ void Master::Search(
 	      	const Sample  sample,
 		const int num_points)
 {
-	std::vector <PointId> probe_points;
 	//probe_points.push_back(starting_point); // FIXME
 
-
 	// Stage 1: bottom-up climb
+	Sample sample_tiny(sample.begin(), sample.begin()+TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	for (int iter=4; iter<num_iterations; ++iter)
+	for (int i=4; i<num_iterations; ++i)
 	{
-		probe_points = (search_engine_.GenerateRandomPoints(iter, try_points, guessing_vars.size()));
-		std::vector <Task> all_tasks;
-		for (auto point: probe_points)
-		{
-			Task t =
-			{
-				.id = point,
-				.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
-			};
-			t.units.resize(try_points);
-			all_tasks.push_back(t); // FIXME: resize sample BEFORE generation
-		}
-
-		std::vector <PointResults> all_results = ProcessTasks (all_tasks);
-		for (auto result: all_results)
-		{
-			search_engine_.AddPointResults(result);
-		}
+		auto probe_points = search_engine_.GenerateRandomPoints(i, try_points, guessing_vars.size());
+		auto results = EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
+		for (auto r: results)
+			search_engine_.AddPointResults(r);
 		if (search_engine_.origin_queue_.size()>0)
 			break;
 	}
 
-	probe_points = search_engine_.GenerateNewPoints(num_points); 
-	// Stage2 2: Search
-	for (int iter=0; iter<num_iterations; ++iter)
+	// Stage 2: Search
+	for (int i=0; i<num_iterations; ++i)
 	{
-		std::vector <Task> all_tasks;
-		for (auto point: probe_points)
-		{
-			Task t =
-			{
-				.id = point,
-				.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
-			};
-			all_tasks.push_back(t);
-		}
-
-		std::vector <PointResults> all_results = ProcessTasks (all_tasks);
-		for (auto result: all_results)
-		{
-			search_engine_.AddPointResults(result);
-		}
-		probe_points = search_engine_.GenerateNewPoints(num_points); 
+		auto probe_points = search_engine_.GenerateNewPoints(num_points); 
+		auto results = EvalPoints(probe_points, guessing_vars, out_mask, sample);
+		for (auto r: results)
+			search_engine_.AddPointResults(r);
 	}
 }
 
+std::vector <PointResults> Master::EvalPoints (
+		const std::vector <PointId> &probe_points, 
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample sample )
+{
+	std::vector <Task> tasks;
+	for (auto point: probe_points)
+	{
+		Task t =
+		{
+			.id = point,
+			.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
+		};
+		tasks.push_back(t);
+	}
+	return EvalTasks (tasks);
+}
 
-
-std::vector <PointResults> Master::ProcessTasks(const std::vector <Task> &tasks)
+std::vector <PointResults> Master::EvalTasks(const std::vector <Task> &tasks)
 {
 	std::vector <PointResults> out;
-
-	std::vector <UnitClauseVector> flat_task;
-	for (auto task: tasks)
-	{
-		std::copy(task.units.begin(), task.units.end(), std::back_inserter(flat_task));
-	}
-	std::vector <SolverReport> flat_results = ProcessTaskUnits(flat_task);
-
+	std::vector <UnitClauseVector> flat_tasks;
+	for (auto t: tasks)
+		std::copy(t.units.begin(), t.units.end(), std::back_inserter(flat_tasks));
+	std::vector <SolverReport> flat_results = EvalTaskUnits(flat_tasks);
 	int i=0;
-	for (auto task: tasks)
+	for (auto t: tasks)
 	{
 		PointResults pr =
 		{
-			.id = task.id,
-			.reps = std::vector <SolverReport> (&flat_results[i], &flat_results[i + task.units.size()])
+			.id = t.id,
+			.reps = std::vector <SolverReport> (&flat_results[i], &flat_results[i + t.units.size()])
 		};
 		out.push_back(pr);
-		i+=task.units.size();
+		i+=t.units.size();
 	}
 	return out;
 }
 
-std::vector <SolverReport> Master::ProcessTaskUnits(const std::vector <UnitClauseVector> &units)
+std::vector <SolverReport> Master::EvalTaskUnits(const std::vector <UnitClauseVector> &units)
 {
 	std::vector <SolverReport> out(units.size());
 	std::vector <int> worker2unitnum(free_workers_.size()+1);
@@ -221,7 +206,7 @@ void Master::SendExitSignal()
 	std::vector <UnitClauseVector> t;
 	for (int i=0; i<total_workers_; ++i)
 		t.push_back(UnitClauseVector());
-	ProcessTaskUnits(t);
+	EvalTaskUnits(t);
 }
 
 Master::Master (int mpi_size)

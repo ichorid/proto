@@ -63,8 +63,13 @@ private:
 	int total_workers_;
 	std::vector <int> free_workers_;
 
-	std::vector <SolverReport> ProcessTaskUnits(const std::vector <UnitClauseVector> &units);
-	std::vector <PointResults> ProcessTasks(const std::vector <Task> &tasks);
+	std::vector <SolverReport> EvalTaskUnits(const std::vector <UnitClauseVector> &units);
+	std::vector <PointResults> EvalTasks(const std::vector <Task> &tasks);
+	std::vector <PointResults> EvalPoints (
+		const std::vector <PointId> &probe_points, 
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample sample);
 	void GiveoutAssignment (int id, Assignment asn);
 	SolverReport RecieveAndRegister();
 	void RegisterWorker(int id) {free_workers_.push_back(id);}
