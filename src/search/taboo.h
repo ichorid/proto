@@ -31,17 +31,18 @@ class TabooSearch
 public:
 	TabooSearch();
 	~TabooSearch();
-	PointId ProcessPointResults (const PointId& point, const Results& results);
-	void AddPointResults (const PointId& point, const Results& results);
+	//PointId ProcessPointResults (const PointId& point, const Results& results);
+	void AddPointResults (const PointResults& results);
 	PointStats GetStats();
 	BestIncapacityQueue origin_queue_;
 	int sat_threshold_ = 1;
+	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1);
+	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size );
 private:
 	PointStatsDB checked_points_;
 	PointStats* global_record_ = NULL;
 	std::mt19937 rng;
 
-	PointId GenerateNewPoint();
 	//void LoadNewSample (int sample_size);
 
 	// Service methods

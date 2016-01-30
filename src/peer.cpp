@@ -11,6 +11,8 @@
 #include "search/taboo.h"
 #include "easylogging++.h"
 
+#define TINY_SAMPLE_SIZE 10
+
 extern MpiBase* mpiS;
 
 // Here we describe our datastructures to MPI
@@ -80,49 +82,110 @@ void Worker::MainJobCycle()
 
 
 /* Master methods */
-
 void Master::Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
-	      	const Sample  sample)
+	      	const Sample  sample,
+		const int num_points)
 {
-	PointId current_point = starting_point;
-	for (int i=0; i<num_iterations; ++i){
-		Task t = GenTask (BM_or (ExpandBM(current_point, guessing_vars), out_mask), sample);
-		Results r = ProcessTask (t);
-		current_point = search_engine_.ProcessPointResults(current_point, r);
+	//probe_points.push_back(starting_point); // FIXME
+
+	// Stage 1: bottom-up climb
+	Sample sample_tiny(sample.begin(), sample.begin()+TINY_SAMPLE_SIZE);
+	const int try_points = 10;
+	for (int i=4; i<num_iterations; ++i)
+	{
+		auto probe_points = search_engine_.GenerateRandomPoints(i, try_points, guessing_vars.size());
+		auto results = EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
+		for (auto r: results)
+			search_engine_.AddPointResults(r);
+		if (search_engine_.origin_queue_.size()>0)
+			break;
+	}
+
+	// Stage 2: Search
+	for (int i=0; i<num_iterations; ++i)
+	{
+		auto probe_points = search_engine_.GenerateNewPoints(num_points); 
+		auto results = EvalPoints(probe_points, guessing_vars, out_mask, sample);
+		for (auto r: results)
+			search_engine_.AddPointResults(r);
 	}
 }
 
-Results Master::ProcessTask(Task& task)
+std::vector <PointResults> Master::EvalPoints (
+		const std::vector <PointId> &probe_points, 
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample sample )
 {
-	Results res;
-	int initial_task_size = task.size();
-	while(res.size()<initial_task_size){
+	std::vector <Task> tasks;
+	for (auto point: probe_points)
+	{
+		Task t =
+		{
+			.id = point,
+			.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
+		};
+		tasks.push_back(t);
+	}
+	return EvalTasks (tasks);
+}
+
+std::vector <PointResults> Master::EvalTasks(const std::vector <Task> &tasks)
+{
+	std::vector <PointResults> out;
+	std::vector <UnitClauseVector> flat_tasks;
+	for (auto t: tasks)
+		std::copy(t.units.begin(), t.units.end(), std::back_inserter(flat_tasks));
+	std::vector <SolverReport> flat_results = EvalTaskUnits(flat_tasks);
+	int i=0;
+	for (auto t: tasks)
+	{
+		PointResults pr =
+		{
+			.id = t.id,
+			.reps = std::vector <SolverReport> (&flat_results[i], &flat_results[i + t.units.size()])
+		};
+		out.push_back(pr);
+		i+=t.units.size();
+	}
+	return out;
+}
+
+std::vector <SolverReport> Master::EvalTaskUnits(const std::vector <UnitClauseVector> &units)
+{
+	std::vector <SolverReport> out(units.size());
+	std::vector <int> worker2unitnum(free_workers_.size()+1);
+	for (int i=0, j=0; i < out.size(); ++i)
+	{
 		// Send work until free_workers stack depletes or there
-		// are no task units left
-		while (free_workers_.size()>0 && task.size()>0){
-			GiveoutAssignment(GetWorker(), task.back()); 
-			task.pop_back();
+		// are no units left
+		while (free_workers_.size()>0 && j < out.size()){
+			int workernum = GetWorker();
+			worker2unitnum[workernum] = j;
+			GiveoutAssignment(workernum, units[j]); 
+			++j;
 		}
-		if (task[0].size()==0) break; // Special case - stop signal
-		// Wait for a report from worker and add his id to
+		if (units[0].size()==0) return out; // Special case - stop signal task
+		// Wait for a report from worker and add it's id to
 		// free_workers stack immediately.
-		SolverReport rep = RecieveAndRegister();
-		res.push_back(rep);
+		auto report = RecieveAndRegister();
+		out[worker2unitnum[free_workers_.back()]]=report;
 	};
-	return res;
+	assert (free_workers_.size()==(worker2unitnum.size()-1));
+	return out;
 }
 
 SolverReport Master::RecieveAndRegister()
 {
-	SolverReport out;
+	SolverReport rep;
 	MPI_Status status;
-	MPI_Recv(&out, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_, MPI_COMM_WORLD, &status);
+	MPI_Recv(&rep, 1, mpiS->SolverReportT_, MPI_ANY_SOURCE, data_tag_, MPI_COMM_WORLD, &status);
 	RegisterWorker(status.MPI_SOURCE);
-	return out;
+	return rep;
 }
 
 void Master::GiveoutAssignment (int target, Assignment asn)
@@ -135,16 +198,15 @@ void Master::GiveoutAssignment (int target, Assignment asn)
 	// Achtung! Pointer trick should work only for std::vector containers!!!
 	// TODO: make some kind of comiler assert to check if we're
 	// actually using std::vector and not some other container !!!
-	MPI_Send(&asn[0], msg_len, MPI_INT, target, data_tag_,
-		       	MPI_COMM_WORLD);
+	MPI_Send(&asn[0], msg_len, MPI_INT, target, data_tag_, MPI_COMM_WORLD);
 }
 
 void Master::SendExitSignal()
 {
-	Task t;
+	std::vector <UnitClauseVector> t;
 	for (int i=0; i<total_workers_; ++i)
 		t.push_back(UnitClauseVector());
-	ProcessTask(t);
+	EvalTaskUnits(t);
 }
 
 Master::Master (int mpi_size)
@@ -153,13 +215,3 @@ Master::Master (int mpi_size)
 	for (int i=1; i<mpi_size; ++i)
 		RegisterWorker(i);
 }
-
-
-
-
-
-
-
-
-
-
