@@ -46,7 +46,7 @@ Assignment Worker::WaitRecieveAssignment()
 	}
 	
 	/**
-	* \fixme: заменить на
+	* \fixme: Р·Р°РјРµРЅРёС‚СЊ РЅР°
 	Assignment out(msg_len);
 	MPI_Recv(&out[0], msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	return std::move(out);

@@ -27,7 +27,7 @@ public:
 typedef std::priority_queue <PointStats*, std::vector <PointStats*>, ComparePointIncapacity> BestIncapacityQueue;
 typedef std::unordered_map <PointId, PointStats*> PointStatsDB;
 
-// fixme: зачем перегоняем строки в строки???
+// fixme: Р·Р°С‡РµРј РїРµСЂРµРіРѕРЅСЏРµРј СЃС‚СЂРѕРєРё РІ СЃС‚СЂРѕРєРё???
 inline std::string Point2Bitstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "0" : "1") ; return out;}
 inline std::string Point2Varstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "" : " "+std::to_string(i+1)); return out;}
 
@@ -39,30 +39,30 @@ public:
 	PointId ProcessPointResults (const PointId& point, const Results& results);
 	
 	/**
-	* \brief Сохраняет результаты прогнозирования для указанной точки.
-	* \param point [in] Точка, прогноз для которой сохраняем.
-	* \param results [in] Результаты решения SAT-задач выборки в этой точке.
+	* \brief РЎРѕС…СЂР°РЅСЏРµС‚ СЂРµР·СѓР»СЊС‚Р°С‚С‹ РїСЂРѕРіРЅРѕР·РёСЂРѕРІР°РЅРёСЏ РґР»СЏ СѓРєР°Р·Р°РЅРЅРѕР№ С‚РѕС‡РєРё.
+	* \param point [in] РўРѕС‡РєР°, РїСЂРѕРіРЅРѕР· РґР»СЏ РєРѕС‚РѕСЂРѕР№ СЃРѕС…СЂР°РЅСЏРµРј.
+	* \param results [in] Р РµР·СѓР»СЊС‚Р°С‚С‹ СЂРµС€РµРЅРёСЏ SAT-Р·Р°РґР°С‡ РІС‹Р±РѕСЂРєРё РІ СЌС‚РѕР№ С‚РѕС‡РєРµ.
 	*/
 	void AddPointResults (const PointId& point, const Results& results);
 	
 	/**
-	* \brief Возвращает информацию о последнем рекорде.
-	* \fixme: название функции не отражает ее назначение.
+	* \brief Р’РѕР·РІСЂР°С‰Р°РµС‚ РёРЅС„РѕСЂРјР°С†РёСЋ Рѕ РїРѕСЃР»РµРґРЅРµРј СЂРµРєРѕСЂРґРµ.
+	* \fixme: РЅР°Р·РІР°РЅРёРµ С„СѓРЅРєС†РёРё РЅРµ РѕС‚СЂР°Р¶Р°РµС‚ РµРµ РЅР°Р·РЅР°С‡РµРЅРёРµ.
 	*/
 	PointStats GetStats();
 
-	// Очередь точек для проверки их окрестности, сортировка по лучшему прогнозу в данной точке
+	// РћС‡РµСЂРµРґСЊ С‚РѕС‡РµРє РґР»СЏ РїСЂРѕРІРµСЂРєРё РёС… РѕРєСЂРµСЃС‚РЅРѕСЃС‚Рё, СЃРѕСЂС‚РёСЂРѕРІРєР° РїРѕ Р»СѓС‡С€РµРјСѓ РїСЂРѕРіРЅРѕР·Сѓ РІ РґР°РЅРЅРѕР№ С‚РѕС‡РєРµ
 	BestIncapacityQueue origin_queue_;
 
-	// Минимально допустимое число решеных SAT-задач в выборке
+	// РњРёРЅРёРјР°Р»СЊРЅРѕ РґРѕРїСѓСЃС‚РёРјРѕРµ С‡РёСЃР»Рѕ СЂРµС€РµРЅС‹С… SAT-Р·Р°РґР°С‡ РІ РІС‹Р±РѕСЂРєРµ
 	int sat_threshold_ = 1;
 
 private:
 
-	// Хеш-таблица, содержащая все проверенные точки и информацию по ним
+	// РҐРµС€-С‚Р°Р±Р»РёС†Р°, СЃРѕРґРµСЂР¶Р°С‰Р°СЏ РІСЃРµ РїСЂРѕРІРµСЂРµРЅРЅС‹Рµ С‚РѕС‡РєРё Рё РёРЅС„РѕСЂРјР°С†РёСЋ РїРѕ РЅРёРј
 	PointStatsDB checked_points_;
 
-	// Точка с лучшим последним рекордом
+	// РўРѕС‡РєР° СЃ Р»СѓС‡С€РёРј РїРѕСЃР»РµРґРЅРёРј СЂРµРєРѕСЂРґРѕРј
 	PointStats* global_record_ = NULL;
 
 	std::mt19937 rng;

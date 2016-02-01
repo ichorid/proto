@@ -15,7 +15,7 @@ TabooSearch::TabooSearch()
 	std::random_device rnd_dev;
 	rng.seed(rnd_dev());
 	PointId point_zero = PointId();
-	// fixme: лучше сделать конструктор по-умолчанию
+	// fixme: Р»СѓС‡С€Рµ СЃРґРµР»Р°С‚СЊ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂ РїРѕ-СѓРјРѕР»С‡Р°РЅРёСЋ
 	PointStats* ps = new PointStats {
 		.point_id = point_zero,
 		.sample_size = 0,
@@ -23,7 +23,7 @@ TabooSearch::TabooSearch()
 		.best_cutoff = 0,
 		.best_incapacity = MAX_DOUBLE
 	};
-	// fixme: зачем пустая строка??
+	// fixme: Р·Р°С‡РµРј РїСѓСЃС‚Р°СЏ СЃС‚СЂРѕРєР°??
 	checked_points_[point_zero] = ps;
 	global_record_ = ps;
 }
@@ -54,7 +54,7 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 {
 	// Filter SATs and sort their scans values
-	// fixme: лучше использовать uint64_t
+	// fixme: Р»СѓС‡С€Рµ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ uint64_t
 	std::vector <long long int> sat_scans;
 	for (auto report: results)
 		if (report.state==SAT)
@@ -108,8 +108,8 @@ void TabooSearch::AddPointResults (const PointId& point, const Results& results)
 PointId TabooSearch::GenerateNewPoint()
 {
 	std::vector <PointId> candidates;
-	// fixme: почему такая странная организация цикла?
-	// означает ли это, что в origin_queue_ могут оказаться проверенные точки??
+	// fixme: РїРѕС‡РµРјСѓ С‚Р°РєР°СЏ СЃС‚СЂР°РЅРЅР°СЏ РѕСЂРіР°РЅРёР·Р°С†РёСЏ С†РёРєР»Р°?
+	// РѕР·РЅР°С‡Р°РµС‚ Р»Рё СЌС‚Рѕ, С‡С‚Рѕ РІ origin_queue_ РјРѕРіСѓС‚ РѕРєР°Р·Р°С‚СЊСЃСЏ РїСЂРѕРІРµСЂРµРЅРЅС‹Рµ С‚РѕС‡РєРё??
 	for(;;)
 	{
 		// Select next origin candidate from top incapacity queue
@@ -122,7 +122,7 @@ PointId TabooSearch::GenerateNewPoint()
 		LOG(DEBUG) << " ORIGIN POP!";
 	}
 
-	// fixme: не проще ли случайно выбрать индекс??
+	// fixme: РЅРµ РїСЂРѕС‰Рµ Р»Рё СЃР»СѓС‡Р°Р№РЅРѕ РІС‹Р±СЂР°С‚СЊ РёРЅРґРµРєСЃ??
 
 	// Shuffle candidate points to even their probabilities
 	std::shuffle(candidates.begin(), candidates.end(), rng);

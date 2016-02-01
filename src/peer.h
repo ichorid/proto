@@ -16,7 +16,7 @@ public:
 	 MpiBase (int* argc_p, char ***argv_p ) { MPI_Init (argc_p, argv_p); MPI_InitDatatypes ();}
 	~MpiBase () { MPI_UnregDatatypes ();   MPI_Finalize();}
 private:
-	// fixme: зачем этот метод???
+	// fixme: Р·Р°С‡РµРј СЌС‚РѕС‚ РјРµС‚РѕРґ???
 	void MPI_InitDatatypes () { MPI_MakeSolverReportType (); }
 	
 	void MPI_MakeSolverReportType ();
@@ -24,7 +24,7 @@ private:
 	MpiBase (MpiBase const&) = delete;
 	void operator = (MpiBase const&) = delete;
 
-	// fixme: зачем этот метод???
+	// fixme: Р·Р°С‡РµРј СЌС‚РѕС‚ РјРµС‚РѕРґ???
 	void MPI_UnregDatatypes () { MPI_Type_free (&SolverReportT_); }
 };
 

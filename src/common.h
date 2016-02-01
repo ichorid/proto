@@ -8,7 +8,7 @@
 typedef int Lit;
 typedef int Var;
 typedef std::vector <Lit> Clause;
-typedef Clause UnitClauseVector; // fixme: плодим сущности ?
+typedef Clause UnitClauseVector; // fixme: РїР»РѕРґРёРј СЃСѓС‰РЅРѕСЃС‚Рё ?
 typedef std::vector <UnitClauseVector> Sample;
 typedef std::vector <UnitClauseVector> Task;
 typedef UnitClauseVector Assignment; // TODO: move me to separate file!
@@ -28,24 +28,24 @@ typedef enum
 typedef struct SolverReport
 {
 	SWState state;
-	// fixme: лучше использовать uint64_t
+	// fixme: Р»СѓС‡С€Рµ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ uint64_t
 	int watch_scans;
 } SolverReport;
 
 typedef std::vector <SolverReport> Results;
 
-// fixme: номер переменной - абсолютное значение?
-// почему возвращаем int, а не Var?
+// fixme: РЅРѕРјРµСЂ РїРµСЂРµРјРµРЅРЅРѕР№ - Р°Р±СЃРѕР»СЋС‚РЅРѕРµ Р·РЅР°С‡РµРЅРёРµ?
+// РїРѕС‡РµРјСѓ РІРѕР·РІСЂР°С‰Р°РµРј int, Р° РЅРµ Var?
 inline int var(Lit l) { return (l>=0?l:(-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
-// fixme: зачем по ссылке передавать?
+// fixme: Р·Р°С‡РµРј РїРѕ СЃСЃС‹Р»РєРµ РїРµСЂРµРґР°РІР°С‚СЊ?
 inline char FlipBit(char& bit){ return  bit^=1;}
 
 typedef std::string PointId;
-// fixme: лучше использовать std::vector<char> вместо std::string
+// fixme: Р»СѓС‡С€Рµ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ std::vector<char> РІРјРµСЃС‚Рѕ std::string
 typedef std::string BitMask;
 
-// fixme: определять структуры по человечески + добавить конструкторы.
-// fixme: лучше использовать платформо независимые типы: std::uint64_t
+// fixme: РѕРїСЂРµРґРµР»СЏС‚СЊ СЃС‚СЂСѓРєС‚СѓСЂС‹ РїРѕ С‡РµР»РѕРІРµС‡РµСЃРєРё + РґРѕР±Р°РІРёС‚СЊ РєРѕРЅСЃС‚СЂСѓРєС‚РѕСЂС‹.
+// fixme: Р»СѓС‡С€Рµ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РїР»Р°С‚С„РѕСЂРјРѕ РЅРµР·Р°РІРёСЃРёРјС‹Рµ С‚РёРїС‹: std::uint64_t
 typedef struct PointStats
 {
 	PointId  point_id;
