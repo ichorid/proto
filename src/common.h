@@ -15,7 +15,8 @@ typedef UnitClauseVector Assignment; // TODO: move me to separate file!
 typedef std::vector <Clause> Cnf;
 typedef std::string PointId;
 typedef std::string BitMask;
-typedef enum {
+typedef enum
+{
 	UNINITIALIZED,
 	INITIALIZED,
 	STOPPED,
@@ -25,44 +26,42 @@ typedef enum {
 	WORKING
 } SWState;
 
-typedef struct Task
+struct Task
 {
-	PointId id;
+	PointId id = "";
 	std::vector <UnitClauseVector> units;
-} Task;
+};
 
-typedef struct SolverReport
+struct SolverReport
 {
-	SWState state;
-	int watch_scans;
-} SolverReport;
+	SWState state = UNINITIALIZED;
+	uint64_t watch_scans = 0;
+};
 
-typedef struct PointResults
+struct PointResults
 {
-	PointId id;
+	PointId id = "";
 	std::vector <SolverReport> reps;
-} PointResults;
+};
 
-
-inline int var(Lit l) { return (l>=0?l:(-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
-inline char FlipBit(char& bit){ return  bit^=1;}
-
-typedef struct PointStats
+struct PointStats
 {
-	PointId  point_id;
-	long unsigned int sample_size;
-	long unsigned int sat_total;
-	long int best_cutoff; // best scans limit
-	double   best_incapacity; 
-} PointStats;
+	PointId  id = "";
+	uint64_t sample_size = 0;
+	uint64_t sat_total = 0;
+	uint32_t best_cutoff = 0; // best scans limit
+	double   best_incapacity = std::numeric_limits<double>::infinity(); 
+};
+
+inline Var var(Lit l) { return (l >= 0 ? l : (-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
+inline char FlipBit(char& bit){ return  bit ^= 1;}
 
 // Some common UC manipulation functions
-
 inline BitMask BM_or(const BitMask& a, const BitMask& b)
 {
 	bool ab = a.size() > b.size();
 	auto out = ab ? a : b;
-	for (int i =0; i< (ab ? b.size() : a.size()); ++i)
+	for (int i = 0; i < (ab ? b.size() : a.size()); ++i)
 		out[i] = a[i] | b[i];
 	return out;
 }
@@ -71,7 +70,7 @@ inline BitMask BM_xor(const BitMask& a, const BitMask& b)
 {
 	bool ab = a.size() > b.size();
 	auto out = ab ? a : b;
-	for (int i =0; i< (ab ? b.size() : a.size()); ++i)
+	for (int i = 0; i < (ab ? b.size() : a.size()); ++i)
 		out[i] = a[i] ^ b[i];
 	return out;
 }
@@ -87,11 +86,11 @@ inline std::vector<BitMask> BM_or(const std::vector<BitMask>& a, const BitMask& 
 
 inline BitMask ExpandBM(const BitMask& m, const std::vector <int>& v)
 {
-	assert(m.size()==v.size());
+	assert(m.size() == v.size());
 	const int out_size = *std::max_element(v.begin(), v.end());
-	BitMask out(out_size,0);
-	for (int i=0; i<m.size(); ++i)
-		out[v[i]-1]=m[i];
+	BitMask out(out_size, 0);
+	for (int i = 0; i < m.size(); ++i)
+		out[v[i]-1] = m[i];
 	return out;
 }
 
@@ -110,22 +109,22 @@ inline std::vector<BitMask> ExpandBM(const std::vector<BitMask>& a, const std::v
 
 inline UnitClauseVector MaskUCVector (const BitMask& mask, const UnitClauseVector& ucv)
 {
-	assert(ucv.size()>0);
+	assert(ucv.size() > 0);
 	// It is OK if mask is shorter than uc vector.
 	UnitClauseVector out;
-	for (int i=0; i<ucv.size(); ++i)
-		if (i<=mask.size() && mask[i]==1)
+	for (int i = 0; i < ucv.size(); ++i)
+		if (i <= mask.size() && mask[i] == 1)
 			out.push_back(ucv[i]);
 	return out;
 }
 
 inline std::vector <UnitClauseVector> GenTaskUnits(const BitMask& mask, const Sample& sample)
 {
-	assert(sample.size()>0);
-	assert(sample[0].size()>=mask.size());
+	assert(sample.size() > 0);
+	assert(sample[0].size() >= mask.size());
 	std::vector <UnitClauseVector> out;
 	for(auto solution_ucv: sample)
-		out.push_back( MaskUCVector(mask, solution_ucv) );
+		out.push_back(MaskUCVector(mask, solution_ucv));
 	return out;
 }
 
@@ -144,9 +143,9 @@ inline Task GenTask(const std::vector <BitMask>& masks_vec, const Sample& sample
 
 inline int CountOnes(const std::string& str)
 {
-	int out=0;
+	int out = 0;
 	for (auto ch: str)
-		out+=(ch==1);
+		out += (ch == 1);
 	return out;
 }
 /*

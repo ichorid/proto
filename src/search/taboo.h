@@ -11,7 +11,11 @@ class ComparePointIncapacity
 {
 	bool reverse;
 public:
-	ComparePointIncapacity(const bool& revparam=false) {reverse=revparam;}
+	
+	ComparePointIncapacity(const bool revparam = false)
+		: reverse(revparam)
+	{}
+
 	bool operator() (const PointStats* lhs, const PointStats* rhs) const
 	{
 		if (reverse) 
@@ -32,22 +36,40 @@ public:
 	TabooSearch();
 	~TabooSearch();
 	//PointId ProcessPointResults (const PointId& point, const Results& results);
+
+	/**
+	* \brief Adds point evaluation results to points DB
+	* \param results [in] Point evaluation results, inluding point ID
+	*/
 	void AddPointResults (const PointResults& results);
-	PointStats GetStats();
+	
+	/**
+	* \brief Returns current record point from point DB
+	*/
+	PointStats GetCurrentRecord();
+
+	// Priority queue, sorts evaluated points by incapacity record.
 	BestIncapacityQueue origin_queue_;
+
+	// Minimal required number of solved (SAT) problems in a sample
 	int sat_threshold_ = 1;
 	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1);
 	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size );
 private:
+
+	// Hash table. Contains all evaluated points and their stats
 	PointStatsDB checked_points_;
+
+	// A point holding the best incapacity record
 	PointStats* global_record_ = NULL;
+
 	std::mt19937 rng;
 
 	//void LoadNewSample (int sample_size);
 
 	// Service methods
 	std::vector<PointId> GetUncheckedHammingNbhd (const PointId& point);
-	inline bool PointChecked(const PointId& id) {return checked_points_.count(id)>0;};
+	inline bool PointChecked(const PointId& id) const { return checked_points_.count(id) > 0; }
 };
 
 

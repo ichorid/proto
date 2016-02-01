@@ -37,14 +37,23 @@ Worker::Worker(Cnf cnf, int scans_limit , int master_id )
 	master_id_   = master_id;
 }
 
-Assignment Worker::WaitRecieveAssignment ()
+Assignment Worker::WaitRecieveAssignment()
 {
 	// Assumes assignment is just an array of int's
 	int msg_len;
 	MPI_Recv(&msg_len, 1, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	if (msg_len==0)
+	if (msg_len == 0)
+	{
 		return Assignment(); //Stop signal recieved
-
+	}
+	
+	/**
+	* \fixme: заменить на
+	Assignment out(msg_len);
+	MPI_Recv(&out[0], msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+	return std::move(out);
+	*/
+	
 	int* tmp_arr = (int*) malloc(msg_len * sizeof(Lit));
 	MPI_Recv(tmp_arr, msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	Assignment out(tmp_arr, tmp_arr+msg_len);
@@ -72,11 +81,12 @@ void Worker::UploadAssignmentReport(SolverReport rep)
 
 void Worker::MainJobCycle()
 {
-	for (;;){
-		Assignment asn = WaitRecieveAssignment ();
-		if (asn.size()==0) break;
-		SolverReport rep = ProcessAssignment (asn);
-		UploadAssignmentReport (rep);
+	for (;;)
+	{
+		Assignment asn = WaitRecieveAssignment();
+		if (asn.size() == 0) break;
+		SolverReport rep = ProcessAssignment(asn);
+		UploadAssignmentReport(rep);
 	}
 }
 
@@ -124,11 +134,9 @@ std::vector <PointResults> Master::EvalPoints (
 	std::vector <Task> tasks;
 	for (auto point: probe_points)
 	{
-		Task t =
-		{
-			.id = point,
-			.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample)
-		};
+		Task t;
+		t.id = point;
+		t.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample);
 		tasks.push_back(t);
 	}
 	return EvalTasks (tasks);
@@ -144,13 +152,11 @@ std::vector <PointResults> Master::EvalTasks(const std::vector <Task> &tasks)
 	int i=0;
 	for (auto t: tasks)
 	{
-		PointResults pr =
-		{
-			.id = t.id,
-			.reps = std::vector <SolverReport> (&flat_results[i], &flat_results[i + t.units.size()])
-		};
+		PointResults pr;
+		pr.id = t.id;
+		pr.reps = std::vector <SolverReport> (&flat_results[i], &flat_results[i + t.units.size()]);
 		out.push_back(pr);
-		i+=t.units.size();
+		i += t.units.size();
 	}
 	return out;
 }

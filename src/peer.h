@@ -16,10 +16,15 @@ public:
 	 MpiBase (int* argc_p, char ***argv_p ) { MPI_Init (argc_p, argv_p); MPI_InitDatatypes ();}
 	~MpiBase () { MPI_UnregDatatypes ();   MPI_Finalize();}
 private:
+	// fixme: зачем этот метод???
 	void MPI_InitDatatypes () { MPI_MakeSolverReportType (); }
+	
 	void MPI_MakeSolverReportType ();
+	
 	MpiBase (MpiBase const&) = delete;
 	void operator = (MpiBase const&) = delete;
+
+	// fixme: зачем этот метод???
 	void MPI_UnregDatatypes () { MPI_Type_free (&SolverReportT_); }
 };
 
@@ -72,8 +77,15 @@ private:
 	      	const Sample sample);
 	void GiveoutAssignment (int id, Assignment asn);
 	SolverReport RecieveAndRegister();
+
 	void RegisterWorker(int id) {free_workers_.push_back(id);}
-	int  GetWorker() {int out=free_workers_.back(); free_workers_.pop_back(); return out;};
+
+	int GetWorker()
+	{
+		int out = free_workers_.back();
+		free_workers_.pop_back();
+		return out;
+	}
 };
 
 #endif

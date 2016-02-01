@@ -77,13 +77,16 @@ int main(int argc, char* argv[])
 
 	if (mpi_rank==0){
 		// Generate sample
-		Sample sample; MakeSample(cnf, core_len, sample, sample_size);
+		Sample sample;
+		MakeSample(cnf, core_len, sample, sample_size);
 		int num_vars = sample[0].size();
 		BitMask out_mask;
-		for (int i=0; i<num_vars; ++i)
-			out_mask.push_back(i<(num_vars-out_len) ? 0:1);
+		for (int i = 0; i < num_vars; ++i)
+		{
+			out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
+		}
 
-		assert(out_mask.size()==sample[0].size());
+		assert(out_mask.size() == sample[0].size());
 
 		// Define starting point
 		PointId starting_point;
