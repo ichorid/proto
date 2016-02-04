@@ -10,8 +10,9 @@
 #include <functional>
 #include <stack>
 
-TabooSearch::TabooSearch()
+TabooSearch::TabooSearch(int sat_threshold)
 {
+	sat_threshold_ = sat_threshold;
 	// Init rng with system's enthropy source
 	std::random_device rnd_dev;
 	rng.seed(rnd_dev());
@@ -44,9 +45,10 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 	return result;
 }
 
-void TabooSearch::AddPointResults (const PointResults& results)
+
+PointStats PointStatsFromResults (const PointResults& results)
 {
-	PointId point = results.id;
+	PointStats ps;
 	// Filter SATs and sort their scans values
 	std::vector <uint64_t> sat_scans;
 	for (auto report: results.reps)
@@ -55,47 +57,52 @@ void TabooSearch::AddPointResults (const PointResults& results)
 	std::sort(sat_scans.begin(), sat_scans.end());
 
 	// Create new point
-	PointStats* ps = new PointStats;
-	ps->id = point;
-	ps->sample_size = results.reps.size();
-	ps->sat_total = sat_scans.size();
+	ps.id = results.id;
+	ps.sample_size = results.reps.size();
+	ps.sat_total = sat_scans.size();
 
 	// derive it's best incapacity
-	int S = CountOnes(point);
+	int S = CountOnes(ps.id);
 	for (int i = 0; i < sat_scans.size(); ++i)
 	{
 		double t = sat_scans[i];
-		double p = double(1+i)/ps->sample_size;	// predicted SAT probability
+		double p = double(1+i) / ps.sample_size;// predicted SAT probability
 		double incapacity = S + log2(t * 3/p) ;
-		if (incapacity < ps->best_incapacity)
+		if (incapacity < ps.best_incapacity)
 		{
-		       	ps->best_incapacity = incapacity;	// update local record
-			ps->best_cutoff  = sat_scans[i];
+		       	ps.best_incapacity = incapacity;// update local record
+			ps.best_cutoff  = sat_scans[i];
 		}
 	}
+	return ps;
+}
+
+
+void TabooSearch::AddPointResults (const PointResults& results)
+{
+	PointStats* ps = new PointStats; 
+	*ps = PointStatsFromResults(results);
 	// and add it to DB and origin candidates queue.
 
-	assert (checked_points_.count(point)==0);
-	checked_points_[point] = ps;
+	assert (checked_points_.count(ps->id)==0);
+	checked_points_[ps->id] = ps;
 
-	if (sat_scans.size()<sat_threshold_)
+	if (ps->sat_total < sat_threshold_)
 		return;
-
 	origin_queue_.push(ps);
-
 	// Check and update global incapacity record if necessary
 	if (ps->best_incapacity < global_record_->best_incapacity)
 	{
-		global_record_= checked_points_[point]; // New record found !!!
+		global_record_= checked_points_[ps->id]; // New record found !!!
 		LOG(INFO) << " New record found: " 
-			<< std::setw(5) << CountOnes(point) << " "
+			<< std::setw(5) << CountOnes(ps->id) << " "
 			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
 			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
 			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
-			<< std::setw(5) << sat_scans.size() << " /" 
+			<< std::setw(5) << ps->sat_total << " /" 
 			<< std::setw(5) << results.reps.size() << " " 
-			<< Point2Bitstring(point) << " ccc "
-			<< Point2Varstring(point) ; // FIXME: expand vars according to the mask
+			<< Point2Bitstring(ps->id) << " ccc "
+			<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
 	}
 }
 

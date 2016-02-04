@@ -100,8 +100,9 @@ void ReadCNFile(const char* file_name, Cnf& cnf )
 }
 
 
-void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
+Sample MakeSample(const Cnf& cnf, int core_len, int sample_size)
 {
+	Sample sample;
 	std::random_device rng;
 	std::mt19937 mt(rng());
 	std::uniform_int_distribution<int> rnd_bit(0,1);
@@ -117,6 +118,7 @@ void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
 		solver.Solve();
 		sample.push_back(solver.GetSolution());
 	}
+	return sample;
 }
 
 

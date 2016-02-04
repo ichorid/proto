@@ -1,12 +1,55 @@
 #define ELPP_NO_DEFAULT_LOG_FILE
 #include "utils.h"
 #include "peer.h"
+#include "search/taboo.h"
 #include "easylogging++.h"
 #include "tclap/CmdLine.h"
 
 INITIALIZE_EASYLOGGINGPP
 
 MpiBase* mpiS;
+
+#define TINY_SAMPLE_SIZE 10
+
+typedef enum
+{
+	SEARCH,
+	CHECK_RECORD
+} WorkMode;
+
+void Search(
+		Master& master,
+		TabooSearch& searchEngine,
+		const int     num_iterations,
+	       	const PointId starting_point,
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample  sample,
+		const int num_points)
+{
+	//probe_points.push_back(starting_point); // FIXME
+
+	// Stage 1: bottom-up climb
+	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
+	const int try_points = 10;
+	for (int i=4; i<num_iterations; ++i)
+	{
+		auto probe_points = searchEngine.GenerateRandomPoints(i, try_points, guessing_vars.size());
+		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
+		for (auto r: results)
+			searchEngine.AddPointResults(r);
+		if (searchEngine.origin_queue_.size()>0)
+			break;
+	}
+	// Stage 2: Search
+	for (int i=0; i<num_iterations; ++i)
+	{
+		auto probe_points = searchEngine.GenerateNewPoints(num_points); 
+		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
+		for (auto r: results)
+			searchEngine.AddPointResults(r);
+	}
+}
 
 int main(int argc, char* argv[])
 {
@@ -60,13 +103,24 @@ int main(int argc, char* argv[])
 		guessing_layer = guessing_layer_arg.getValue();
 		num_points = num_points_arg.getValue();
 
-	}catch (TCLAP::ArgException &e){ 
-		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl; }
-
+	}
+	catch (TCLAP::ArgException &e)
+	{ 
+		std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;
+	}
 	std::vector < std::vector <int> > var_layers;
 	ReadCNFile(filename, cnf, var_layers);
 
-	if (var_layers.size()==0){
+	// Initialize worker processes
+	if (mpi_rank > 0)
+	{
+		Worker worker(cnf, scans_limit);
+		worker.MainJobCycle();
+		return 0;
+	}
+
+	if (var_layers.size()==0)
+	{
 		LOG(INFO) << " No variable layers data found in CNF file. Will solve on core variables.";
 		for (int i=0; i<core_len; ++i)
 			guessing_vars.push_back(i+1);
@@ -75,33 +129,31 @@ int main(int argc, char* argv[])
 		guessing_vars = var_layers[guessing_layer];
 	}
 
-	if (mpi_rank==0){
-		// Generate sample
-		Sample sample;
-		MakeSample(cnf, core_len, sample, sample_size);
-		int num_vars = sample[0].size();
-		BitMask out_mask;
-		for (int i = 0; i < num_vars; ++i)
+	Master master(mpi_size);
+	WorkMode workMode = SEARCH;
+	// Work mode selector
+	switch (workMode)
+	{
+		case SEARCH:
 		{
-			out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
+			auto sample = MakeSample(cnf, core_len, sample_size);
+			int num_vars = sample[0].size();
+			BitMask out_mask;
+			for (int i = 0; i < num_vars; ++i)
+				out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
+			assert(out_mask.size() == sample[0].size());
+			// Define starting point
+			PointId starting_point(guessing_vars.size(), 1);
+			auto searchEngine = TabooSearch(sat_threshold);
+			Search(master, searchEngine, num_iterations, starting_point, guessing_vars, out_mask, sample, num_points);
+		} 
+		break;
+		case CHECK_RECORD:
+		{
+			//PointId starting_point;
 		}
-
-		assert(out_mask.size() == sample[0].size());
-
-		// Define starting point
-		PointId starting_point;
-		for (int i=0; i<guessing_vars.size(); ++i)
-			starting_point.push_back(1);
-
-		Master master(mpi_size);
-		master.search_engine_.sat_threshold_= sat_threshold;
-		master.Search(num_iterations, starting_point, guessing_vars, out_mask, sample, num_points);
-		master.SendExitSignal();
-
-	}else{
-		Worker worker(cnf, scans_limit);
-		worker.MainJobCycle();
+		break;
 	}
-
+	master.SendExitSignal();
 	return 0;
 }

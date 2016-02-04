@@ -8,10 +8,8 @@
 #include "common.h"
 #include "peer.h"
 #include "wrappers/minisat22.h"
-#include "search/taboo.h"
 #include "easylogging++.h"
 
-#define TINY_SAMPLE_SIZE 10
 
 extern MpiBase* mpiS;
 
@@ -92,6 +90,7 @@ void Worker::MainJobCycle()
 
 
 /* Master methods */
+/*
 void Master::Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
@@ -114,7 +113,6 @@ void Master::Search(
 		if (search_engine_.origin_queue_.size()>0)
 			break;
 	}
-
 	// Stage 2: Search
 	for (int i=0; i<num_iterations; ++i)
 	{
@@ -124,6 +122,7 @@ void Master::Search(
 			search_engine_.AddPointResults(r);
 	}
 }
+*/
 
 std::vector <PointResults> Master::EvalPoints (
 		const std::vector <PointId> &probe_points, 
