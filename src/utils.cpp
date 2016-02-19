@@ -80,7 +80,7 @@ void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_laye
 	}
 }
 
-void ReadCNFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int> > & var_layers )
+void ReadCnfFile(const char* file_name, Cnf& cnf, std::vector <std::vector<int> > & var_layers )
 {
 	std::ifstream file(file_name, std::ios::in);
 
@@ -93,10 +93,10 @@ void ReadCNFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int>
 	file.close();
 }
 
-void ReadCNFile(const char* file_name, Cnf& cnf ) 
+void ReadCnfFile(const char* file_name, Cnf& cnf ) 
 { 
 	std::vector < std::vector <int> > dummy_layers; 
-	ReadCNFile(file_name, cnf, dummy_layers); 
+	ReadCnfFile(file_name, cnf, dummy_layers); 
 }
 
 

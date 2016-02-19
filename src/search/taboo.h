@@ -41,7 +41,7 @@ public:
 	* \brief Adds point evaluation results to points DB
 	* \param results [in] Point evaluation results, inluding point ID
 	*/
-	void AddPointResults (const PointResults& results);
+	void AddPointResults (FitnessFunction fitnessFunction, const PointResults& results);
 	
 	/**
 	* \brief Returns current record point from point DB

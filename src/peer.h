@@ -53,7 +53,7 @@ class Master : protected Peer
 {
 public:
 	Master (int mpi_size);
-	void SendExitSignal();
+	~Master (){SendExitSignal();} ;
 	std::vector <PointResults> EvalPoints (
 		const std::vector <PointId> &probe_points, 
 	       	const std::vector <int> guessing_vars,
@@ -73,6 +73,7 @@ private:
 		free_workers_.pop_back();
 		return out;
 	}
+	void SendExitSignal();
 };
 
 #endif

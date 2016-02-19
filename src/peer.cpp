@@ -41,23 +41,11 @@ Assignment Worker::WaitRecieveAssignment()
 	int msg_len;
 	MPI_Recv(&msg_len, 1, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	if (msg_len == 0)
-	{
 		return Assignment(); //Stop signal recieved
-	}
 	
-	/**
-	* \fixme: заменить на
 	Assignment out(msg_len);
 	MPI_Recv(&out[0], msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	return std::move(out);
-	*/
-	
-	int* tmp_arr = (int*) malloc(msg_len * sizeof(Lit));
-	MPI_Recv(tmp_arr, msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	Assignment out(tmp_arr, tmp_arr+msg_len);
-
-	free (tmp_arr);
-	return out;
 }
 
 SolverReport Worker::ProcessAssignment(Assignment &asn)
