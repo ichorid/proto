@@ -3,6 +3,7 @@ TARGET := fhsat
 CXX=mpic++
 
 SOURCES := \
+	fitness.cpp \
 	search/taboo.cpp \
 	wrappers/minisat22.cpp \
 	utils.cpp \

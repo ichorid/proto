@@ -53,6 +53,8 @@ struct PointStats
 	double   best_incapacity = std::numeric_limits<double>::infinity(); 
 };
 
+typedef PointStats (*FitnessFunction)(const PointResults& results);
+
 inline Var var(Lit l) { return (l >= 0 ? l : (-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
 inline char FlipBit(char& bit){ return  bit ^= 1;}
 

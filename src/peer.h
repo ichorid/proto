@@ -5,7 +5,6 @@
 #undef SEEK_CUR
 #include <mpi.h>
 #include "common.h"
-#include "search/taboo.h"
 
 // It's constructor/destructor actually invoke MPI_Datatype (un)registration procedures.
 class MpiBase
@@ -53,39 +52,28 @@ protected:
 class Master : protected Peer
 {
 public:
-	TabooSearch search_engine_;
-
 	Master (int mpi_size);
-	void Search(
-		const int     num_iterations,
-	       	const PointId starting_point,
-	       	const std::vector <int> guessing_vars,
-	       	const BitMask out_mask,
-	      	const Sample  sample,
-		const int num_points = 1);
-	void SendExitSignal();
-private:
-	int total_workers_;
-	std::vector <int> free_workers_;
-
-	std::vector <SolverReport> EvalTaskUnits(const std::vector <UnitClauseVector> &units);
-	std::vector <PointResults> EvalTasks(const std::vector <Task> &tasks);
+	~Master (){SendExitSignal();} ;
 	std::vector <PointResults> EvalPoints (
 		const std::vector <PointId> &probe_points, 
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample sample);
+private:
+	int total_workers_;
+	std::vector <int> free_workers_;
+	std::vector <SolverReport> EvalTaskUnits(const std::vector <UnitClauseVector> &units);
+	std::vector <PointResults> EvalTasks(const std::vector <Task> &tasks);
 	void GiveoutAssignment (int id, Assignment asn);
 	SolverReport RecieveAndRegister();
-
 	void RegisterWorker(int id) {free_workers_.push_back(id);}
-
 	int GetWorker()
 	{
 		int out = free_workers_.back();
 		free_workers_.pop_back();
 		return out;
 	}
+	void SendExitSignal();
 };
 
 #endif

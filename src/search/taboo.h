@@ -33,7 +33,7 @@ inline std::string Point2Varstring(const PointId& p) { std::string out; for (int
 class TabooSearch
 {
 public:
-	TabooSearch();
+	TabooSearch(const int sat_threshold = 1);
 	~TabooSearch();
 	//PointId ProcessPointResults (const PointId& point, const Results& results);
 
@@ -41,7 +41,7 @@ public:
 	* \brief Adds point evaluation results to points DB
 	* \param results [in] Point evaluation results, inluding point ID
 	*/
-	void AddPointResults (const PointResults& results);
+	void AddPointResults (FitnessFunction fitnessFunction, const PointResults& results);
 	
 	/**
 	* \brief Returns current record point from point DB
@@ -55,6 +55,13 @@ public:
 	int sat_threshold_ = 1;
 	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1);
 	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size );
+	void Search(
+		const int     num_iterations,
+	       	const PointId starting_point,
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample  sample,
+		const int num_points = 1);
 private:
 
 	// Hash table. Contains all evaluated points and their stats

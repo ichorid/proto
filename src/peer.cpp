@@ -8,10 +8,8 @@
 #include "common.h"
 #include "peer.h"
 #include "wrappers/minisat22.h"
-#include "search/taboo.h"
 #include "easylogging++.h"
 
-#define TINY_SAMPLE_SIZE 10
 
 extern MpiBase* mpiS;
 
@@ -43,23 +41,11 @@ Assignment Worker::WaitRecieveAssignment()
 	int msg_len;
 	MPI_Recv(&msg_len, 1, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	if (msg_len == 0)
-	{
 		return Assignment(); //Stop signal recieved
-	}
 	
-	/**
-	* \fixme: заменить на
 	Assignment out(msg_len);
 	MPI_Recv(&out[0], msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 	return std::move(out);
-	*/
-	
-	int* tmp_arr = (int*) malloc(msg_len * sizeof(Lit));
-	MPI_Recv(tmp_arr, msg_len, MPI_INT, master_id_, data_tag_, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-	Assignment out(tmp_arr, tmp_arr+msg_len);
-
-	free (tmp_arr);
-	return out;
 }
 
 SolverReport Worker::ProcessAssignment(Assignment &asn)
@@ -92,6 +78,7 @@ void Worker::MainJobCycle()
 
 
 /* Master methods */
+/*
 void Master::Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
@@ -114,7 +101,6 @@ void Master::Search(
 		if (search_engine_.origin_queue_.size()>0)
 			break;
 	}
-
 	// Stage 2: Search
 	for (int i=0; i<num_iterations; ++i)
 	{
@@ -124,6 +110,7 @@ void Master::Search(
 			search_engine_.AddPointResults(r);
 	}
 }
+*/
 
 std::vector <PointResults> Master::EvalPoints (
 		const std::vector <PointId> &probe_points, 

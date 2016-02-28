@@ -80,7 +80,7 @@ void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_laye
 	}
 }
 
-void ReadCNFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int> > & var_layers )
+void ReadCnfFile(const char* file_name, Cnf& cnf, std::vector <std::vector<int> > & var_layers )
 {
 	std::ifstream file(file_name, std::ios::in);
 
@@ -93,15 +93,16 @@ void ReadCNFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int>
 	file.close();
 }
 
-void ReadCNFile(const char* file_name, Cnf& cnf ) 
+void ReadCnfFile(const char* file_name, Cnf& cnf ) 
 { 
 	std::vector < std::vector <int> > dummy_layers; 
-	ReadCNFile(file_name, cnf, dummy_layers); 
+	ReadCnfFile(file_name, cnf, dummy_layers); 
 }
 
 
-void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
+Sample MakeSample(const Cnf& cnf, int core_len, int sample_size)
 {
+	Sample sample;
 	std::random_device rng;
 	std::mt19937 mt(rng());
 	std::uniform_int_distribution<int> rnd_bit(0,1);
@@ -117,6 +118,7 @@ void MakeSample(const Cnf& cnf, int core_len, Sample& sample, int sample_size)
 		solver.Solve();
 		sample.push_back(solver.GetSolution());
 	}
+	return sample;
 }
 
 
