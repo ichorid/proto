@@ -8,7 +8,7 @@ int main(int argc, char* argv[])
 	{
 		const char* filename="cnf/hanoi4.cnf";
 		Cnf cnf;
-		ReadCNFile(filename, cnf);
+		ReadCnfFile(filename, cnf);
 		Minisat22Wrapper WM;
 		SWrapper &W = WM;
 		W.InitSolver(cnf);
@@ -34,7 +34,7 @@ int main(int argc, char* argv[])
 	{
 		const char* filename="cnf/hanoi4.cnf";
 		Cnf cnf;
-		ReadCNFile(filename, cnf);
+		ReadCnfFile(filename, cnf);
 		Minisat22Wrapper WM;
 		SWrapper &W = WM;
 		W.InitSolver(cnf);
@@ -54,12 +54,12 @@ int main(int argc, char* argv[])
 		std::cout << std::endl;
 	}
 	// test  MakeSample
+	/*
 	{
 		const char* filename="cnf/bivium_template_new.cnf";
 		Cnf cnf;
-		ReadCNFile(filename, cnf);
-		Sample sample;
-		MakeSample(cnf, 177, sample, 100);
+		ReadCnfFile(filename, cnf);
+		Sample MakeSample(cnf, 177, 100);
 		for (auto unit: sample){
 			for (auto lit: unit)
 				std::cout << lit << " ";
@@ -67,4 +67,5 @@ int main(int argc, char* argv[])
 		}
 
 	}
+	*/
 }
