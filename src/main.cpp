@@ -42,6 +42,7 @@ void Search(
 		for (auto r: results)
 			searchEngine.AddPointResults(fitnessFunction, r);
 	}
+	LOG(INFO) << " STAGE 2";
 	// Stage 2: Search
 	for (int i=0; i<num_iterations; ++i)
 	{
@@ -73,6 +74,7 @@ int main(int argc, char* argv[])
 	int num_iterations;
 	int sat_threshold;
 	int num_points;
+	SolverType solverType = MINISAT_SOLVER;
 
 	bool modeUnsat = false;
 
@@ -103,6 +105,7 @@ int main(int argc, char* argv[])
 			TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER", cmd);
 			TCLAP::ValueArg <std::string> startingPointsFilename_arg ("", "starting_points","Starting points list filename", false, "","STPFILENAME", cmd);
 			TCLAP::SwitchArg modeUnsat_arg ("a", "mode-unsat","Experimental 'UNSAT' mode",cmd, false);
+			TCLAP::SwitchArg useLingeling_arg("", "ling","use Lingeling solver engine",cmd, false);
 			TCLAP::UnlabeledValueArg<std::string> filename_arg("filename","Path to SAT problem file in DIMACS CNF format.", true, "","CNF_FILENAME", cmd);
 			cmd.parse(argc, argv);
 
@@ -122,10 +125,11 @@ int main(int argc, char* argv[])
 			guessing_layer = guessing_layer_arg.getValue();
 			num_points = num_points_arg.getValue();
 			modeUnsat = modeUnsat_arg.getValue();
+			solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
 			// Initialize worker processes
 			if (mpi_rank > 0)
 			{
-				Worker worker(cnf, scans_limit);
+				Worker worker(cnf, scans_limit, 0, solverType);
 				worker.MainJobCycle();
 				return 0;
 			}

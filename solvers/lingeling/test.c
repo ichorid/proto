@@ -185,4 +185,5 @@ int main (int argc, char ** argv) {
   parse (lgl, in, &lineno);
   res = lglsat (lgl);
   if (verbose >= 0) fputs ("c\n", stdout), lglstats (lgl);
+  exit(2);
 }

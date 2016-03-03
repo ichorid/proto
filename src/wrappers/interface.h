@@ -13,6 +13,7 @@ public:
 	virtual void SetWatchScansLimit(long long unsigned int scans_limit) = 0;
 	virtual SolverReport GetReport() = 0;
 	virtual UnitClauseVector GetSolution() = 0;
+	virtual ~SWrapper(){};
 };
 
 

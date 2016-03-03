@@ -27107,3 +27107,10 @@ int lgljoin (LGL * parent, LGL * child) {
   }
   return res;
 }
+
+int lglvisits(LGL * lgl)
+{
+  Stats * s = lgl->stats;
+  int visits = s->visits.search + s->visits.simp + s->visits.lkhd;
+  return visits;
+}

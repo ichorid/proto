@@ -6,6 +6,11 @@
 #include <mpi.h>
 #include "common.h"
 
+enum SolverType
+{
+	MINISAT_SOLVER,
+	LINGELING_SOLVER
+};
 // It's constructor/destructor actually invoke MPI_Datatype (un)registration procedures.
 class MpiBase
 {
@@ -15,7 +20,6 @@ public:
 	 MpiBase (int* argc_p, char ***argv_p ) { MPI_Init (argc_p, argv_p); MPI_InitDatatypes ();}
 	~MpiBase () { MPI_UnregDatatypes ();   MPI_Finalize();}
 private:
-	// fixme: зачем этот метод???
 	void MPI_InitDatatypes () { MPI_MakeSolverReportType (); }
 	
 	void MPI_MakeSolverReportType ();
@@ -23,7 +27,6 @@ private:
 	MpiBase (MpiBase const&) = delete;
 	void operator = (MpiBase const&) = delete;
 
-	// fixme: зачем этот метод???
 	void MPI_UnregDatatypes () { MPI_Type_free (&SolverReportT_); }
 };
 
@@ -41,8 +44,12 @@ public:
 	Cnf cnf_;
 	int scans_limit_;
 
-	Worker(Cnf cnf, int scans_limit =100000, int master_id = 0);
+	Worker(Cnf cnf,
+		       	int scans_limit =100000,
+		       	int master_id = 0,
+		       	SolverType solverType = MINISAT_SOLVER);
 	void MainJobCycle();
+	SolverType solverType_;
 protected:
 	SolverReport ProcessAssignment (Assignment &asn);
 	Assignment   WaitRecieveAssignment ();

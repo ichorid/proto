@@ -347,4 +347,5 @@ void lglsetunlockeq (LGL *, void (*unlock)(void*,int cons,int prod), void *);
 void lglsetmsglock (LGL *, void (*lock)(void*), void (*unlock)(void*), void*);
 void lglsetime (LGL *, double (*time)(void));
 
+int lglvisits(LGL * lgl);
 #endif

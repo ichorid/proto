@@ -8,6 +8,7 @@
 #include "common.h"
 #include "peer.h"
 #include "wrappers/minisat22.h"
+#include "wrappers/lingeling.h"
 #include "easylogging++.h"
 
 
@@ -28,11 +29,12 @@ void MpiBase::MPI_MakeSolverReportType()
 }
 
 /* Worker class methods */
-Worker::Worker(Cnf cnf, int scans_limit , int master_id )
+Worker::Worker( Cnf cnf, int scans_limit , int master_id, SolverType solverType)
 {
 	cnf_         = cnf;
 	scans_limit_ = scans_limit;
 	master_id_   = master_id;
+	solverType_ = solverType;
 }
 
 Assignment Worker::WaitRecieveAssignment()
@@ -50,13 +52,19 @@ Assignment Worker::WaitRecieveAssignment()
 
 SolverReport Worker::ProcessAssignment(Assignment &asn)
 {
-	Minisat22Wrapper s;
-	s.InitSolver (cnf_);
-	s.AddUCs (asn);
-	s.SetWatchScansLimit (scans_limit_);
-	s.Solve ();
+	SWrapper* s = NULL;
+	if (solverType_ == MINISAT_SOLVER)
+		s = new Minisat22Wrapper;
+	else if (solverType_ == LINGELING_SOLVER)
+		s = new LingelingWrapper;
+	s->InitSolver (cnf_);
+	s->AddUCs (asn);
+	s->SetWatchScansLimit (scans_limit_);
+	s->Solve ();
+	SolverReport out = s->GetReport();
+	delete (s);
 
-	return s.GetReport ();
+	return out;
 }
 
 void Worker::UploadAssignmentReport(SolverReport rep)
