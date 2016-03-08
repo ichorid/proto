@@ -1,5 +1,6 @@
 #!/bin/sh
 
+dema=no
 check=undefined
 chksol=undefined
 coverage=undefined
@@ -8,13 +9,12 @@ log=undefined
 lto=no
 olevel=none
 other=none
-picosat=no
-druplig=no
+druplig=undefined
 profile=undefined
 static=no
-aiger=no
-double=no
-yalsat=no
+aiger=undefined
+yalsat=undefined
+files=no
 
 ##########################################################################
 
@@ -43,11 +43,11 @@ do
        echo "--chksol        always check solution (default for '-c')"
        echo "--no-chksol     do not check solution"
        echo "--softfloats    use software floats"
-       echo "--double        use hardware floats (of 'double' type)"
        echo "--no-log        no logging code (overwrite default for '-g')"
+       echo "--dema"
+       echo "--no-dema"
        echo "-O[0-4]         set optimization level unless '-g' specified"
        echo "-flto           enable link time optimization"
-       echo "--picosat       add checking code depending on PicoSAT"
        echo "-f...|-m...     add other compiler options"
        echo "--aiger=<dir>   specify AIGER directory (default '../aiger')"
        echo "--no-aiger      no targets requiring AIGER library"
@@ -55,6 +55,7 @@ do
        echo "--no-yalsat     do not include YalSAT code"
        echo "--druplig       specify Druplig directory (default '../druplig')"
        echo "--no-druplig    do not include Druplig code"
+       echo "--files         generate statistics files"
        exit 0
        ;;
     -g|--debug) debug=yes;;
@@ -65,20 +66,20 @@ do
     --no-check) check=no;;
     --no-log) log=no;;
     -p|--profile) profile=yes;;
-    --softfloats) double=no;;
-    --double) double=yes;;
     --coverage) coverage=yes;;
-    --picosat) picosat=yes;;
     -O) debug=no;;
+    --dema) dema=yes;;
+    --no-dema) dema=no;;
     -O0|-O1|-O2|-O3|-O4) olevel=$1;;
     -lto|-flto|--lto|--flto) lto=yes;;
-    -static) static=yes;;
+    -static|--static|-s) static=yes;;
     --aiger=*) aiger=`echo "$1"|sed -e 's,^--aiger=,,'`;;
     --no-aiger) aiger=no;;
     --yalsat=*) yalsat=`echo "$1"|sed -e 's,^--yalsat=,,'`;;
     --no-yalsat) yalsat=no;;
     --druplig) druplig=`echo "$1"|sed -e 's,^--druplig=,,'`;;
     --no-druplig) druplig=no;;
+    --files) files=yes;;
     -f*|-m*) if [ $other = none ]; then other=$1; else other="$other $1"; fi;;
     *) echo "*** configure.sh: invalid command line option '$1'"; exit 1;;
   esac
@@ -189,33 +190,9 @@ else
   [ $lto = yes ] && CFLAGS="$CFLAGS -flto -fwhole-program"
 fi
 
-[ $double = no ] && CFLAGS="$CFLAGS -DNDBLSCR"
-
 LIBS="-lm"
-if [ $picosat = yes ]
-then
-  if [ ! -d ../picosat ]
-  then
-    echo "*** configure.sh: can not find '../picosat'"
-    exit 1;
-  elif [ ! -f ../picosat/picosat.h ]
-  then
-    echo "*** configure.sh: can not find '../picosat/picosat.h'"
-    exit 1;
-  elif [ ! -f ../picosat/libpicosat.a ]
-  then
-    echo "*** configure.sh: can not find '../picosat/libpicosat.a'"
-    exit 1;
-  else
-    HDEPS="../picosat/picosat.h"
-    LDEPS="../picosat/libpicosat.a"
-    LIBS="$LIBS -L../picosat -lpicosat"
-    CFLAGS="$CFLAGS -I../picosat"
-  fi
-else
-  HDEPS=""
-  LDEPS=""
-fi
+HDEPS=""
+LDEPS=""
 
 if [ "$aiger" = no ]
 then
@@ -258,9 +235,10 @@ fi
 [ $log = no ] && CFLAGS="$CFLAGS -DNLGLOG"
 [ $check = no ] && CFLAGS="$CFLAGS -DNDEBUG"
 [ $chksol = no ] && CFLAGS="$CFLAGS -DNCHKSOL"
-[ $picosat = no ] && CFLAGS="$CFLAGS -DNLGLPICOSAT"
 [ $druplig = no ] && CFLAGS="$CFLAGS -DNLGLDRUPLIG"
 [ $yalsat = no ] && CFLAGS="$CFLAGS -DNLGLYALSAT"
+[ $files = no ] && CFLAGS="$CFLAGS -DNLGLFILES"
+[ $dema = no ] && CFLAGS="$CFLAGS -DNLGLDEMA"
 
 echo "$CC $CFLAGS"
 

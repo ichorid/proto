@@ -1,5 +1,8 @@
 #!/bin/sh
 
+LC_TIME="en_US"
+export LC_TIME
+
 die () {
    echo "*** mkconfig.sh: $*" 1>&2
    exit 1
@@ -16,7 +19,7 @@ EOF
 echo "#define LGL_OS \"`uname -srmn`\""
 echo "#define LGL_COMPILED \"`date`\""
 cat<<EOF
-#define LGL_RELEASED "Don Mai 22 22:08:00 CEST 2014"
-#define LGL_VERSION "azf"
-#define LGL_ID "92032848c138b2f33629ad24394d60a3787a1046"
+#define LGL_RELEASED "Mon Nov  9 11:04:59 CET 2015"
+#define LGL_VERSION "bal"
+#define LGL_ID "2293bef0a4bd680210f6f5a453efa8b0a26f53ee"
 EOF

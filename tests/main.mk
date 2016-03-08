@@ -39,5 +39,6 @@ SOURCES := \
 	../src/utils.cpp \
 	../solvers/minisat22/core/Solver.cc \
 	../solvers/lingeling/lglib.c \
+	../solvers/lingeling/lglopts.c \
 	../src/wrappers/lingeling.cpp
 

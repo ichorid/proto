@@ -11,6 +11,7 @@ SOURCES := \
 	peer.cpp \
 	../solvers/minisat22/core/Solver.cc \
 	../solvers/lingeling/lglib.c \
+	../solvers/lingeling/lglopts.c \
 	main.cpp
 
 BUILD_DIR := ../build

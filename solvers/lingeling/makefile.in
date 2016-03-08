@@ -8,15 +8,21 @@ LDEPS=@LDEPS@
 HDEPS=@HDEPS@
 AIGER=@AIGER@
 
-all: lingeling
+all: targets
 
+-include makefile.mus
+-include makefile.other
 
+targets: liblgl.a
+targets: lingeling plingeling ilingeling treengeling
+targets: lglmbt lgluntrace lglddtrace
+targets: @AIGERTARGETS@
 
 analyze:
 	clang --analyze $(CFLAGS) $(shell ls *.c *.h)
 
-liblgl.a: lglib.o lglbnr.o lgldimacs.o makefile
-	ar rc $@ lglib.o lglbnr.o lgldimacs.o
+liblgl.a: lglib.o lglbnr.o lgldimacs.o lglopts.o makefile
+	ar rc $@ lglib.o lglbnr.o lgldimacs.o lglopts.o
 	ranlib $@
 
 lingeling: lglmain.o liblgl.a makefile $(LDEPS)
@@ -53,12 +59,14 @@ lgluntrace.o: lgluntrace.c lglib.h makefile
 lglddtrace.o: lglddtrace.c lglib.h makefile
 	$(CC) $(CFLAGS) -c lglddtrace.c
 
-lglib.o: lglib.c lglib.h makefile $(HDEPS)
+lglib.o: lglib.c lglib.h lglconst.h lgloptl.h lglopts.h makefile $(HDEPS)
 	$(CC) $(CFLAGS) -c lglib.c
 lgldimacs.o: lgldimacs.c lgldimacs.h makefile
 	$(CC) $(CFLAGS) -c lgldimacs.c
 lglbnr.o: lglbnr.c lglcfg.h lglcflags.h makefile
 	$(CC) $(CFLAGS) -c lglbnr.c
+lglopts.o: lglopts.c lglopts.h lglconst.h lgloptl.h makefile
+	$(CC) $(CFLAGS) -c lglopts.c
 
 lglcfg.h: VERSION mkconfig.sh lglbnr.c lglib.c lglmain.c lglcflags.h makefile
 	rm -f $@

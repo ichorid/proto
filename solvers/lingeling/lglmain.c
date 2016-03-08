@@ -17,7 +17,7 @@
 static LGL * lgl4sigh;
 static int catchedsig, verbose, ignmissingheader, ignaddcls;
 
-static int * targets, sztargets, ntargets, multiple;
+static int * targets, sztargets, ntargets;
 
 static void (*sig_int_handler)(int);
 static void (*sig_segv_handler)(int);
@@ -212,6 +212,7 @@ SKIP:
     n = 10 * n + (ch - '0');
   while (ch == ' ')
     ch = next (in, lp);
+  if (ch == '\r') ch = next (in, lp);
   if (ch != '\n') return "invalid header: expected new line after header";
   if (verbose >= 0)
     printf ("c found 'p cnf %d %d' header\n", m, n), fflush (stdout);
@@ -318,12 +319,6 @@ static void lglpushtarget (int target) {
   targets[ntargets++] = target;
 }
 
-static int lglmonotifiy (void * lgl, int target, int val) {
-  printf ("t %d %d after %.3f seconds\n", target, val, lglsec (lgl));
-  fflush (stdout);
-  return 1;
-}
-
 static int primes[] = {
   200000033, 200000039, 200000051, 200000069, 200000081,
 };
@@ -346,7 +341,7 @@ int main (int argc, char ** argv) {
   setsighandlers ();
   for (i = 1; i < argc; i++) {
     if (!strcmp (argv[i], "-h") || !strcmp (argv[i], "--help")) {
-      printf ("usage: lingeling [<option> ...][<file>[.gz]]\n");
+      printf ("usage: lingeling [<option> ...][<file>[.<suffix>]]\n");
       printf ("\n");
       printf ("where <option> is one of the following:\n");
       printf ("\n");
@@ -359,7 +354,6 @@ int main (int argc, char ** argv) {
       printf ("-t <seconds>     set time limit\n");
       printf ("\n");
       printf ("-a <assumption>  use multiple assumptions\n");
-      printf ("-m <objective>   use multiple objectives\n");
       printf ("\n");
       printf ("-h|--help        print command line option summary\n");
       printf ("-f|--force       force reading even without header\n");
@@ -372,6 +366,18 @@ int main (int argc, char ** argv) {
       printf ("-e|--embedded    ditto but in an embedded format print\n");
       printf ("-n|--no-witness   do not print solution (see '--witness')\n");
       printf ("\n");
+      printf ("-c               increase checking level\n");
+      printf ("-l               increase logging level\n");
+      printf ("-v               increase verbose level\n");
+      printf ("\n");
+#ifdef NLGLDRUPLIG
+      printf ("--verify         online forward check\n");
+      printf ("--proof          generate proof file\n");
+#else
+      printf ("--verify         ignored (no DRUPLIG library)\n");
+      printf ("--proof          ignored (no DRUPLIG library)\n");
+#endif
+      printf ("\n");
       printf ("--thanks=<whom>  alternative way of specifying the seed\n");
       printf ("                 (inspired by Vampire)\n");
       printf ("\n");
@@ -381,6 +387,13 @@ int main (int argc, char ** argv) {
 "can be embedded into the CNF file, set through the API or capitalized\n"
 "with prefix 'LGL' instead of '--' through environment variables.\n"
 "Their default values are displayed in square brackets.\n");
+      printf ("\n");
+      printf (
+"The input <file> can be compressed.  This is detected by matching\n"
+"the <suffix> of the filename against 'gz', 'bz2, 'lzma', 'zip', '7z'.\n"
+"However uncompressing a file is implemented by starting an external\n"
+"process running corresponding helper programs, e.g., 'gunzip', 'bzcat'.\n"
+"Thus those have to be installed and in the current path if needed.\n");
       printf ("\n");
       lglusage (lgl);
       goto DONE;
@@ -453,12 +466,6 @@ int main (int argc, char ** argv) {
 	res = 1;
 	goto DONE;
       }
-      if (multiple) {
-	assert (ntargets > 0);
-	fprintf (stderr, "*** lingeling error: unexpectd '-a' after '-m'\n");
-	res = 1;
-	goto DONE;
-      }
       target = atoi (argv[i]);
       if (!target) {
 	fprintf (stderr,
@@ -467,26 +474,6 @@ int main (int argc, char ** argv) {
 	goto DONE;
       }
       lglpushtarget (target);
-    } else if (!strcmp (argv[i], "-m")) {
-      if (++i == argc) {
-	fprintf (stderr, "*** lingeling error: argument to '-m' missing\n");
-	res = 1;
-	goto DONE;
-      }
-      if (!multiple && ntargets > 0) {
-	fprintf (stderr, "*** lingeling error: unexpectd '-m' after '-a'\n");
-	res = 1;
-	goto DONE;
-      }
-      target = atoi (argv[i]);
-      if (!target) {
-	fprintf (stderr,
-	  "*** lingeling error: invalid literal in '-m %d'\n", target);
-	res = 1;
-	goto DONE;
-      }
-      lglpushtarget (target);
-      multiple = 1;
     } else if (!strcmp (argv[i], "-d") || !strcmp (argv[i], "--defaults")) {
       lglopts (lgl, "", 0);
       goto DONE;
@@ -517,6 +504,18 @@ int main (int argc, char ** argv) {
       ignaddcls = 1;
     } else if (!strcmp (argv[i], "-n") || !strcmp (argv[i], "no-witness")) {
       lglsetopt (lgl, "witness", 0);
+    } else if (!strcmp (argv[i], "-c")) {
+      lglsetopt (lgl, "check", lglgetopt (lgl, "check") + 1);
+    } else if (!strcmp (argv[i], "-l")) {
+      lglsetopt (lgl, "log", lglgetopt (lgl, "log") + 1);
+    } else if (!strcmp (argv[i], "-v")) {
+      lglsetopt (lgl, "verbose", lglgetopt (lgl, "verbose") + 1);
+    } else if (!strcmp (argv[i], "--verify")) {
+      lglsetopt (lgl, "druplig", 1);
+      lglsetopt (lgl, "drupligcheck", 1);
+    } else if (!strcmp (argv[i], "--proof")) {
+      lglsetopt (lgl, "druplig", 1);
+      lglsetopt (lgl, "drupligtrace", 1);
     } else if (argv[i][0] == '-') {
       if (argv[i][1] == '-') {
 	match = strchr (argv[i] + 2, '=');
@@ -622,6 +621,13 @@ ERR:
       in = popen (tmp, "r");
       if (in) clin = 2;
       free (tmp);
+    } else if (len >= 4 && !strcmp (iname + len - 4, ".zip")) {
+      if (verbose >= 1) printf ("c piping '%s' through 'unzip'\n", iname);
+      tmp = malloc (len + 20);
+      sprintf (tmp, "unzip -p %s", iname);
+      in = popen (tmp, "r");
+      if (in) clin = 2;
+      free (tmp);
     } else if (len >= 3 && !strcmp (iname + len - 3, ".7z")) {
       if (verbose >= 1) printf ("c piping '%s' through '7z'\n", iname);
       tmp = malloc (len + 40);
@@ -680,24 +686,20 @@ ERR:
     sig_alrm_handler = signal (SIGALRM, catchalrm);
     alarm (timelimit);
   }
-  if (multiple) lglpushtarget (0), ntargets--;
-  else for (i = 0; i < ntargets; i++) lglassume (lgl, targets[i]);
-  if (multiple) res = lglmosat (lgl, lgl, lglmonotifiy, targets);
-  else {
-    if (simplevel > 0) {
-      if (verbose >= 1) {
-	printf ("c simplifying with simplification level %d\n", simplevel);
-	fflush (stdout);
-      }
-      res = lglsimp (lgl, simplevel);
-      if (verbose >= 1) {
-	printf ("c simplifying result %d after %.2f seconds\n",
-	  res, lglsec (lgl));
-	fflush (stdout);
-      }
-    } else res = 0;
-    res = lglsat (lgl);
+  for (i = 0; i < ntargets; i++) lglassume (lgl, targets[i]);
+  if (simplevel > 0) {
+    if (verbose >= 1) {
+      printf ("c simplifying with simplification level %d\n", simplevel);
+      fflush (stdout);
+    }
+    res = lglsimp (lgl, simplevel);
+    if (verbose >= 1) {
+      printf ("c simplifying result %d after %.2f seconds\n",
+	res, lglsec (lgl));
+      fflush (stdout);
+    }
   }
+  res = lglsat (lgl);
   if (timelimit >= 0) {
     caughtalarm = 0;
     (void) signal (SIGALRM, sig_alrm_handler);
