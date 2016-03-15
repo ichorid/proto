@@ -24,6 +24,7 @@ void ReadClause(IStream& in, Clause& cla);
 void ReadCNF(IStream& in, Cnf& cnf);
 void ReadCnfFile(const char* file_name, Cnf& cnf, std::vector < std::vector <int> > & var_layers );
 void ReadCnfFile(const char* file_name, Cnf& cnf );
+std::vector <PointId> ReadPointsList(const char* file_name,  const std::vector <int>& guessing_vars);
 Sample MakeSample(const Cnf& cnf, int core_len, int sample_size);
 
 #endif
