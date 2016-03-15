@@ -334,4 +334,5 @@ void lglsetmsglock (LGL *, void (*lock)(void*), void (*unlock)(void*), void*);
 void lglsetime (LGL *, double (*time)(void));
 
 int lglvisits(LGL * lgl);
+double lglsearchtime(LGL * lgl);
 #endif

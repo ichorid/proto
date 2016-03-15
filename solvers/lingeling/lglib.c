@@ -25323,3 +25323,8 @@ int lglvisits(LGL * lgl)
   int visits = s->visits.search + s->visits.simp + s->visits.lkhd;
   return visits;
 }
+double lglsearchtime(LGL * lgl)
+{
+  double st = lgl->times->search;
+  return st;
+}
