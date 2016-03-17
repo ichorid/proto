@@ -35,15 +35,12 @@ void Search(
 	// Stage 1: bottom-up climb
 	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	if (searchEngine.origin_queue_.size()==0)
-	for (int i=4; i<num_iterations; ++i)
+	for (int i=4; i<num_iterations && searchEngine.origin_queue_.size()==0; ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints(i, try_points, guessing_vars.size());
 		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
 		for (auto r: results)
 			searchEngine.AddPointResults(fitnessFunction, r);
-		if (searchEngine.origin_queue_.size()>0)
-			break;
 	}
 	// Stage 2: Search
 	for (int i=0; i<num_iterations; ++i)

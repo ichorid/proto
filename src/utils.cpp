@@ -132,6 +132,10 @@ std::vector <PointId> ReadPointsList(const char* file_name,  const std::vector <
 				}
 				point.push_back(1);
 			}
+			while (i++ < guessing_vars.size())
+					point.push_back(0);
+
+			assert (point.size()==guessing_vars.size());
 			out.push_back(point);
 		}
 
