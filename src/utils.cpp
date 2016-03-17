@@ -99,6 +99,51 @@ void ReadCnfFile(const char* file_name, Cnf& cnf )
 	ReadCnfFile(file_name, cnf, dummy_layers); 
 }
 
+std::vector <PointId> ReadPointsList(const char* file_name,  const std::vector <int>& guessing_vars)
+{
+	std::ifstream file(file_name, std::ios::in);
+	std::vector <Clause> tmp;
+	std::vector <PointId> out;
+	if(!file.is_open()){
+		std::cout << "File " << file_name << " not found!" << std::endl;
+		exit(1);
+	}
+	IStream in(file);
+	for(;;){
+		SkipWhitespace(in);
+		if(in.eof()) break;
+		else if((*in == 'p') && Match(in, "p cnf")){
+			SkipLine(in);
+		}else if(*in == 'c'){
+			SkipLine(in);
+		}else{
+			Clause cla;
+			ReadClause(in, cla);
+			//TODO: make work in broken cases. Use std algorithms, etc.
+			// We assume both vectors are pre-sorted
+			int i=0;
+			PointId point;
+			for (auto v: cla)
+			{
+				while (v != guessing_vars[i++])
+				{
+					point.push_back(0);
+					assert(i < guessing_vars.size());
+				}
+				point.push_back(1);
+			}
+			while (i++ < guessing_vars.size())
+					point.push_back(0);
+
+			assert (point.size()==guessing_vars.size());
+			out.push_back(point);
+		}
+
+
+	}
+	file.close();
+	return out;
+}
 
 Sample MakeSample(const Cnf& cnf, int core_len, int sample_size)
 {

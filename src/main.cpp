@@ -20,20 +20,27 @@ void Search(
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample  sample,
-		const int num_points)
+		const int num_points,
+		const std::vector <PointId> starting_points = std::vector <PointId> ()
+		)
 {
+	// Stage 0: check starting point if given one
+	if (starting_points.size() > 0)
+	{
+		auto results = master.EvalPoints(starting_points, guessing_vars, out_mask, sample);
+		for (auto r: results)
+			searchEngine.AddPointResults(fitnessFunction, r);
+	}
 
 	// Stage 1: bottom-up climb
 	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	for (int i=4; i<num_iterations; ++i)
+	for (int i=4; i<num_iterations && searchEngine.origin_queue_.size()==0; ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints(i, try_points, guessing_vars.size());
 		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
 		for (auto r: results)
 			searchEngine.AddPointResults(fitnessFunction, r);
-		if (searchEngine.origin_queue_.size()>0)
-			break;
 	}
 	// Stage 2: Search
 	for (int i=0; i<num_iterations; ++i)
@@ -94,14 +101,17 @@ int main(int argc, char* argv[])
 			TCLAP::ValueArg<int> corelen_arg	("c", "corelen","Num of core vars.", true, 0,"CORE_LEN", cmd);
 			TCLAP::ValueArg<int> outlen_arg		("o", "outlen","Num of out vars.", true, 0,"OUT_LEN", cmd);
 			TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER", cmd);
+			TCLAP::ValueArg <std::string> startingPointsFilename_arg ("", "starting_points","Starting points list filename", false, "","STPFILENAME", cmd);
 			TCLAP::SwitchArg modeUnsat_arg ("a", "mode-unsat","Experimental 'UNSAT' mode",cmd, false);
 			TCLAP::UnlabeledValueArg<std::string> filename_arg("filename","Path to SAT problem file in DIMACS CNF format.", true, "","CNF_FILENAME", cmd);
 			cmd.parse(argc, argv);
 
+			// TODO: Rewrite this in cpp-style
 			char filename[4096]; // Maximum Linux path length. No need to conserve bytes nowadays...
 			strcpy(filename, filename_arg.getValue().c_str()); // hackish!
 			std::vector < std::vector <int> > var_layers;
 			ReadCnfFile(filename, cnf, var_layers);
+
 
 			scans_limit = scans_limit_arg.getValue();
 			sample_size = sample_size_arg.getValue();
@@ -129,6 +139,16 @@ int main(int argc, char* argv[])
 			{
 				assert(guessing_layer < var_layers.size());
 				guessing_vars = var_layers[guessing_layer];
+			}
+
+			std::vector <PointId> starting_points;
+			if (startingPointsFilename_arg.isSet())
+			{
+				char stp_filename[4096];
+				strcpy(stp_filename, startingPointsFilename_arg.getValue().c_str());
+				starting_points = ReadPointsList(stp_filename, guessing_vars);
+				for (auto a: starting_points)
+					LOG (INFO) << "Starting point:" << Point2Varstring (a);
 			}
 
 			//Master master(mpi_size);
@@ -161,7 +181,8 @@ int main(int argc, char* argv[])
 			       	guessing_vars,
 			       	out_mask,
 			       	sample,
-			       	num_points);
+			       	num_points,
+				starting_points);
 		}
 		catch (TCLAP::ArgException &e)
 		{
