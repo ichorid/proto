@@ -47,6 +47,7 @@ public:
 	* \brief Returns current record point from point DB
 	*/
 	PointStats GetCurrentRecord();
+	void ResetCurrentRecord();
 
 	// Priority queue, sorts evaluated points by incapacity record.
 	BestIncapacityQueue origin_queue_;
@@ -54,7 +55,7 @@ public:
 	// Minimal required number of solved (SAT) problems in a sample
 	int sat_threshold_ = 1;
 	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1);
-	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const int point_size );
+	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const PointId& basePoint);
 	void Search(
 		const int     num_iterations,
 	       	const PointId starting_point,

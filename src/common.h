@@ -146,7 +146,7 @@ inline Task GenTask(const std::vector <BitMask>& masks_vec, const Sample& sample
 {
 	assert(sample.size()>0);
 	//assert(sample[0].size()>=mask[0].size());
-	Task out;
+	Task out
 	for(auto mask: masks_vec)
 		for(auto solution_ucv: sample)
 			out.push_back( MaskUCVector(mask, solution_ucv) );
@@ -154,13 +154,15 @@ inline Task GenTask(const std::vector <BitMask>& masks_vec, const Sample& sample
 }
 */
 
-inline int CountOnes(const std::string& str)
+inline int CountSymbol(const std::string& str, const char s)
 {
 	int out = 0;
 	for (auto ch: str)
-		out += (ch == 1);
+		out += (ch == s);
 	return out;
 }
+inline int CountOnes(const std::string& str)   { return CountSymbol(str, 1); }
+inline int CountZeroes(const std::string& str) { return CountSymbol(str, 0); }
 /*
 std::vector<PointId> GetHammingNbhd (PointId point)
 {

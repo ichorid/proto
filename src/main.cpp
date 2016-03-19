@@ -1,5 +1,6 @@
 #define ELPP_NO_DEFAULT_LOG_FILE
 #include "utils.h"
+#include <iterator>
 #include "peer.h"
 #include "fitness.h"
 #include "search/taboo.h"
@@ -12,6 +13,7 @@ MpiBase* mpiS;
 
 #define TINY_SAMPLE_SIZE 10
 
+inline std::string IntVector2String(const std::vector <int> &p ) { std::stringstream out; out << std::setw(5); for (const auto& n: p)  out << n << " " ; return out.str();}
 void Search(
 		Master master,
 		TabooSearch searchEngine,
@@ -21,9 +23,13 @@ void Search(
 	       	const BitMask out_mask,
 	      	const Sample  sample,
 		const int num_points,
+		const int groundLevel,
 		const std::vector <PointId> starting_points = std::vector <PointId> ()
 		)
 {
+	std::vector <PointStats> localRecords;
+	std::vector <int> varsCount(guessing_vars.size(), 0);
+
 	// Stage 0: check starting point if given one
 	if (starting_points.size() > 0)
 	{
@@ -32,25 +38,47 @@ void Search(
 			searchEngine.AddPointResults(fitnessFunction, r);
 	}
 
-	// Stage 1: bottom-up climb
-	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
-	const int try_points = 10;
-	for (int i=4; i<num_iterations && searchEngine.origin_queue_.size()==0; ++i)
+	for (;;)
 	{
-		auto probe_points = searchEngine.GenerateRandomPoints(i, try_points, guessing_vars.size());
-		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
-		for (auto r: results)
-			searchEngine.AddPointResults(fitnessFunction, r);
+		PointId basePoint = PointId(guessing_vars.size(), 0);
+		// Stage 1: "Rise"
+		Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
+		const int try_points = 10;
+		for (int i=groundLevel; i<num_iterations && searchEngine.origin_queue_.size()==0; ++i)
+		{
+			auto probe_points = searchEngine.GenerateRandomPoints(i, try_points, basePoint);
+			auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample_tiny);
+			for (const auto &r: results)
+				searchEngine.AddPointResults(fitnessFunction, r);
+		}
+		LOG(INFO) << " STAGE 2";
+		// Stage 2: "Fall"
+		PointStats lastRecord;
+		int stallLimit = 10;
+		for (int i=0, stallCount=0; (i < num_iterations) && (stallCount < stallLimit); ++i)
+		{
+			auto probe_points = searchEngine.GenerateNewPoints(num_points); 
+			auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
+			for (const auto &r: results)
+				searchEngine.AddPointResults(fitnessFunction, r);
+			if (searchEngine.GetCurrentRecord().id == lastRecord.id)
+			{
+				++stallCount;
+			}
+			else
+			{
+				lastRecord = searchEngine.GetCurrentRecord();
+				stallCount = 0;
+			}
+		}
+		localRecords.push_back(lastRecord);
+		for (size_t i=0; i < lastRecord.id.size(); ++i)
+			varsCount[i] += lastRecord.id[i];
+		LOG(INFO) << "Vars stats: " <<  IntVector2String (varsCount);
+		while(!searchEngine.origin_queue_.empty()) searchEngine.origin_queue_.pop();
+		searchEngine.ResetCurrentRecord();
 	}
-	LOG(INFO) << " STAGE 2";
-	// Stage 2: Search
-	for (int i=0; i<num_iterations; ++i)
-	{
-		auto probe_points = searchEngine.GenerateNewPoints(num_points); 
-		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
-		for (auto r: results)
-			searchEngine.AddPointResults(fitnessFunction, r);
-	}
+
 }
 
 int main(int argc, char* argv[])
@@ -81,6 +109,7 @@ int main(int argc, char* argv[])
 	int core_len;
 	int out_len;
 	int guessing_layer;
+	int groundLevel=0;
 	std::vector <int> guessing_vars;
 	// Get work mode and CNF file name from commandline
 	// Parse mode switch argument
@@ -109,6 +138,7 @@ int main(int argc, char* argv[])
 			TCLAP::SwitchArg modeUnsat_arg ("a", "mode-unsat","Experimental 'UNSAT' mode",cmd, false);
 			TCLAP::SwitchArg useLingeling_arg("", "ling","use Lingeling solver engine",cmd, false);
 			TCLAP::UnlabeledValueArg<std::string> filename_arg("filename","Path to SAT problem file in DIMACS CNF format.", true, "","CNF_FILENAME", cmd);
+			TCLAP::ValueArg<int> groundLevel_arg	("g", "ground","Starting backdoor size for bottom-up search.", false, 0,"GROUND", cmd);
 			cmd.parse(argc, argv);
 
 			// TODO: Rewrite this cpp-style
@@ -130,6 +160,7 @@ int main(int argc, char* argv[])
 			num_points = num_points_arg.getValue();
 			modeUnsat = modeUnsat_arg.getValue();
 			solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
+			groundLevel = groundLevel_arg.getValue();
 			// Initialize worker processes
 			if (mpi_rank > 0)
 			{
@@ -212,6 +243,7 @@ int main(int argc, char* argv[])
 			       	out_mask,
 			       	sample,
 			       	num_points,
+				groundLevel,
 				starting_points);
 		}
 		catch (TCLAP::ArgException &e)

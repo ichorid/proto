@@ -35,8 +35,8 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 	for (int i = 0; i < point.size(); ++i)
 	{
 		PointId tmp = point;
-		FlipBit(tmp[i]);
-		//tmp[i]=0;
+		//FlipBit(tmp[i]);
+		tmp[i]=0;
 		if (!PointChecked(tmp))
 		{
 			result.push_back(tmp);
@@ -126,18 +126,25 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 std::vector <PointId> TabooSearch::GenerateRandomPoints(
 		const int num_ones,
 		const int desired_candidates,
-		const int point_size)
+		const PointId& basePoint)
 {
 	std::unordered_set <PointId> candidates;
 	while (candidates.size() < desired_candidates)
 	{
+		//FIXME: add safety checks!
+		PointId randomBools;
+		for (size_t i=0; i < CountZeroes(basePoint); ++i)
+			randomBools.push_back(i < num_ones ? 1 : 0);
+		std::shuffle(randomBools.begin(), randomBools.end(), rng); 
+
 		PointId point;
-		for (int i = 0; i < point_size; ++i)
-			point.push_back(i < num_ones ? 1 : 0);
-		std::shuffle(point.begin(), point.end(), rng); 
+		size_t i=0;
+		for (auto v: basePoint)
+			point.push_back(v ? v : randomBools[i++]);
+
 		if (!PointChecked(point) && candidates.count(point) == 0)
 			candidates.insert(point);
-		//FIXME: add safety checks!
+
 	}
 	return std::vector <PointId> (candidates.begin(), candidates.end());
 }
@@ -166,3 +173,9 @@ PointStats TabooSearch::GetCurrentRecord()
 {
 	return *global_record_;
 }
+
+void TabooSearch::ResetCurrentRecord()
+{
+	global_record_ = checked_points_[PointStats().id];
+}
+
