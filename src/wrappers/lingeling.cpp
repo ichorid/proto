@@ -2,8 +2,19 @@
 extern "C"
 {
 	#include "lglib.h"
+	#include <signal.h>
 }
 #include <iostream>
+
+static LGL * lgl4sigh;
+static void (*sig_alrm_handler)(int);
+static int caughtalarm = 0;
+static void catchalrm (int sig) {
+  assert (sig == SIGALRM);
+  if (!caughtalarm) {
+    caughtalarm = 1;
+  }
+}
 
 void LingelingWrapper::addProblem(const Cnf& cnf)
 {
@@ -15,9 +26,15 @@ void LingelingWrapper::addProblem(const Cnf& cnf)
 	}
 }
 
+static int checkalarm (void * ptr) {
+  assert (ptr == (void*) &caughtalarm);
+  return caughtalarm;
+}
 void LingelingWrapper::InitSolver(const Cnf& cnf)
 {
 	lgl_ = lglinit ();
+	lglseterm (lgl_, checkalarm, &caughtalarm);
+	sig_alrm_handler = signal (SIGALRM, catchalrm);
 	addProblem(cnf);
 lglsetopt(lgl_, "actavgmax", 34);
 lglsetopt(lgl_, "actdblarithlim", 0);
@@ -350,7 +367,12 @@ lglsetopt(lgl_, "waitmax", 1284343515);
 
 void LingelingWrapper::Solve()
 {
+	alarm (scans_limit_);
 	int res = lglsat (lgl_);
+	//FIXME: Dirty workaround for bad signal handling!
+	if (!caughtalarm) pause();
+	caughtalarm = 0;
+	(void) signal (SIGALRM, sig_alrm_handler);
 	if (res == 10)
 		state = SAT;
 	else if (res == 20)
@@ -393,8 +415,9 @@ UnitClauseVector LingelingWrapper::GetSolution()
 }
 void LingelingWrapper::SetWatchScansLimit(long long unsigned int scans_limit)
 {
-	lglsetopt(lgl_,"plim" ,scans_limit);
+	//lglsetopt(lgl_,"plim" ,scans_limit);
 	//lglsetopt(lgl_,"verbose" ,5);
+	scans_limit_ = scans_limit;
 }
 LingelingWrapper::~LingelingWrapper(void)
 {

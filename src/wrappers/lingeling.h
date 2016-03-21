@@ -25,6 +25,7 @@ protected:
 	//Members
 	LGL* lgl_;
 	SWState state;
+	long long unsigned int scans_limit_ = 0;
 	void addProblem(const Cnf& cnf);
 };
 
