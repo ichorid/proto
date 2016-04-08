@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "wrappers/minisat22.h"
 #include <random>
+#include "easylogging++.h"
 
 void SkipLine(IStream& in)
 {
@@ -49,6 +50,17 @@ void ReadClause(IStream& in, Clause& cla)
 		cla.push_back(parsed_lit);
 	}
 }
+
+std::vector <char> ReadBitString(IStream& in)
+{
+	std::vector <char> result;
+	SkipWhitespace(in);
+	while (*in == '0' ||  *in == '1')
+		result.push_back((*in == '0') ? 0 : 1),
+			++in;
+	return result;
+}
+
 
 void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_layers )
 {
@@ -99,7 +111,7 @@ void ReadCnfFile(const char* file_name, Cnf& cnf )
 	ReadCnfFile(file_name, cnf, dummy_layers); 
 }
 
-std::vector <PointId> ReadPointsList(const char* file_name,  const std::vector <int>& guessing_vars)
+std::vector <PointId> ReadPointsFile(const char* file_name,  const std::vector <int>& guessing_vars)
 {
 	std::ifstream file(file_name, std::ios::in);
 	std::vector <Clause> tmp;
@@ -139,31 +151,51 @@ std::vector <PointId> ReadPointsList(const char* file_name,  const std::vector <
 			out.push_back(point);
 		}
 
-
 	}
 	file.close();
 	return out;
 }
 
-Sample MakeSample(const Cnf& cnf, int core_len, int sample_size)
+std::vector <std::vector <char> > ReadInitStreamsFile(const char* file_name)
 {
+	std::ifstream file(file_name, std::ios::in);
+	std::vector <std::vector <char> > out;
+	if(!file.is_open()){
+		std::cout << "File " << file_name << " not found!" << std::endl;
+		exit(1);
+	}
+	IStream in(file);
+	for(;;){
+		SkipWhitespace(in);
+		if(in.eof())
+			break;
+		else
+			out.push_back(ReadBitString(in));
+	}
+	file.close();
+	return out;
+}
+
+Sample MakeSample(const Cnf& cnf, int core_len, int sample_size, std::vector <std::vector <char> > initStream)
+{
+	const bool randomMode = initStream.empty();
 	Sample sample;
 	std::random_device rng;
 	std::mt19937 mt(rng());
 	std::uniform_int_distribution<int> rnd_bit(0,1);
 	for (int j=0; j<sample_size; ++j){
-		// Create random core vector
-		UnitClauseVector rnd_core;
+		if (!randomMode)
+			assert (initStream[j].size() == core_len);
+		// Create core vector
+		UnitClauseVector coreLits;
 		for (int i=0; i<core_len; ++i)
-			rnd_core.push_back((i+1)*(1-2*rnd_bit(mt)));
-
+			coreLits.push_back((i+1)*(-1+2* (randomMode ?  rnd_bit(mt) : initStream[j][i])));
 		Minisat22Wrapper solver;
 		solver.InitSolver(cnf);
-		solver.AddUCs(rnd_core);
+		solver.AddUCs(coreLits);
 		solver.Solve();
+		assert (solver.GetReport().state == SAT);
 		sample.push_back(solver.GetSolution());
 	}
 	return sample;
 }
-
-
