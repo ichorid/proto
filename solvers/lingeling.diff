@@ -1,0 +1,19 @@
++++ ./lingeling/lglib.c	2016-03-02 19:23:54.564546533 +0800
+@@ -27107,3 +27107,10 @@
+   }
+   return res;
+ }
++
++int lglvisits(LGL * lgl)
++{
++  Stats * s = lgl->stats;
++  int visits = s->visits.search + s->visits.simp + s->visits.lkhd;
++  return visits;
++}
++++ ./lingeling/lglib.h	2016-03-02 19:24:08.992611513 +0800
+@@ -347,4 +347,5 @@
+ void lglsetmsglock (LGL *, void (*lock)(void*), void (*unlock)(void*), void*);
+ void lglsetime (LGL *, double (*time)(void));
+ 
++int lglvisits(LGL * lgl);
+ #endif

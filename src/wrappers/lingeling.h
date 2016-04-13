@@ -1,12 +1,16 @@
-#ifndef WRAPPERS_MINISAT22_H_
-#define WRAPPERS_MINISAT22_H_
+#ifndef WRAPPERS_LINGELING_H_
+#define WRAPPERS_LINGELING_H__
 #include "common.h"
 #include "wrappers/interface.h"
 #include "core/SolverTypes.h"
 #include "core/Solver.h"
+extern "C"
+{
+	#include "solvers/lingeling/lglib.h"
+}
 using Minisat::lbool;
 
-class Minisat22Wrapper : public SWrapper
+class LingelingWrapper: public SWrapper
 {
 public:
 	//Methods
@@ -16,12 +20,15 @@ public:
 	void SetWatchScansLimit(long long unsigned int scans_limit);
 	SolverReport GetReport();
 	UnitClauseVector GetSolution();
+	~LingelingWrapper();
 protected:
 	//Members
-	Minisat::Solver S;
+	LGL* lgl_;
 	SWState state;
+	long long unsigned int scans_limit_ = 0;
 	void addProblem(const Cnf& cnf);
 };
 
 #endif
+
 

@@ -1,22 +1,25 @@
 #include "utils.h"
 #include "wrappers/minisat22.h"
+#include "wrappers/lingeling.h"
 #include <iostream>
 
 int main(int argc, char* argv[])
 {
 	// test basic solve 
 	{
-		const char* filename="cnf/hanoi4.cnf";
+		const char* filename="../cnf/hanoi4.cnf";
 		Cnf cnf;
 		ReadCnfFile(filename, cnf);
-		Minisat22Wrapper WM;
+		LingelingWrapper WM;
 		SWrapper &W = WM;
 		W.InitSolver(cnf);
 
 		W.Solve();
 		const SolverReport rep = W.GetReport();
 		if (rep.state==SAT){
-			std::cout<< "SAT";
+			std::cout<< "SAT" << std::endl;
+			for (auto lit: W.GetSolution())
+				std::cout<< lit << std::endl;
 		}
 		if (rep.state==UNSAT){
 			std::cout<< "UNSAT";
@@ -25,20 +28,17 @@ int main(int argc, char* argv[])
 			std::cout<< "Undef";
 		}
 		std::cout << std::endl;
-		for (auto lit: W.GetSolution()){
-			std::cout<< lit << std::endl;
-		}
 	}
 
 	// test solve with watch_scans limit
 	{
-		const char* filename="cnf/hanoi4.cnf";
+		const char* filename="../cnf/hanoi4.cnf";
 		Cnf cnf;
 		ReadCnfFile(filename, cnf);
-		Minisat22Wrapper WM;
+		LingelingWrapper WM;
 		SWrapper &W = WM;
 		W.InitSolver(cnf);
-		W.SetWatchScansLimit(10000);
+		W.SetWatchScansLimit(1);
 
 		W.Solve();
 		const SolverReport rep = W.GetReport();
@@ -51,21 +51,7 @@ int main(int argc, char* argv[])
 		if (rep.state==STOPPED){
 			std::cout<< "Undef";
 		}
-		std::cout << std::endl;
+		std::cout <<  std::endl;
+		std::cout << rep.watch_scans <<  std::endl;
 	}
-	// test  MakeSample
-	/*
-	{
-		const char* filename="cnf/bivium_template_new.cnf";
-		Cnf cnf;
-		ReadCnfFile(filename, cnf);
-		Sample MakeSample(cnf, 177, 100);
-		for (auto unit: sample){
-			for (auto lit: unit)
-				std::cout << lit << " ";
-			std::cout << std::endl;
-		}
-
-	}
-	*/
 }

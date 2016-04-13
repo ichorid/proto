@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
 	{
 		const char* filename="cnf/hanoi4.cnf";
 		Cnf cnf;
-		ReadCNFile(filename, cnf);
+		ReadCnfFile(filename, cnf);
 		std::cout << std::endl;
 		for (auto cl: cnf){
 			for (auto lit: cl){
@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 		const char* filename="cnf/Bivium.cnf";
 		Cnf cnf;
 		std::vector < std::vector <int> > var_layers;
-		ReadCNFile(filename, cnf, var_layers);
+		ReadCnfFile(filename, cnf, var_layers);
 		std::cout << std::endl;
 		for (auto cl: cnf){
 			for (auto lit: cl){
