@@ -102,15 +102,18 @@ int main(int argc, char* argv[])
 			TCLAP::ValueArg<int> outlen_arg		("o", "outlen","Num of out vars.", true, 0,"OUT_LEN", cmd);
 			TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER", cmd);
 			TCLAP::ValueArg <std::string> startingPointsFilename_arg ("", "starting_points","Starting points list filename", false, "","STPFILENAME", cmd);
+			TCLAP::ValueArg <std::string> extInitStreamsFilename_arg ("", "streams_file","External init streams (core vars values) filename", false, "","ISFILENAME", cmd);
 			TCLAP::SwitchArg modeUnsat_arg ("a", "mode-unsat","Experimental 'UNSAT' mode",cmd, false);
 			TCLAP::UnlabeledValueArg<std::string> filename_arg("filename","Path to SAT problem file in DIMACS CNF format.", true, "","CNF_FILENAME", cmd);
 			cmd.parse(argc, argv);
 
-			// TODO: Rewrite this in cpp-style
-			char filename[4096]; // Maximum Linux path length. No need to conserve bytes nowadays...
-			strcpy(filename, filename_arg.getValue().c_str()); // hackish!
+			// TODO: Rewrite this cpp-style
 			std::vector < std::vector <int> > var_layers;
-			ReadCnfFile(filename, cnf, var_layers);
+			{
+				char filename[4096]; // Maximum Linux path length. No need to conserve bytes nowadays...
+				strcpy(filename, filename_arg.getValue().c_str()); // hackish!
+				ReadCnfFile(filename, cnf, var_layers);
+			}
 
 
 			scans_limit = scans_limit_arg.getValue();
@@ -144,15 +147,23 @@ int main(int argc, char* argv[])
 			std::vector <PointId> starting_points;
 			if (startingPointsFilename_arg.isSet())
 			{
-				char stp_filename[4096];
-				strcpy(stp_filename, startingPointsFilename_arg.getValue().c_str());
-				starting_points = ReadPointsList(stp_filename, guessing_vars);
+				char filename[4096];
+				strcpy(filename, startingPointsFilename_arg.getValue().c_str());
+				starting_points = ReadPointsFile(filename, guessing_vars);
 				for (auto a: starting_points)
 					LOG (INFO) << "Starting point:" << Point2Varstring (a);
 			}
 
+			std::vector < std::vector <char> > extInitStreams;
+			if (extInitStreamsFilename_arg.isSet())
+			{
+				char filename[4096];
+				strcpy(filename, extInitStreamsFilename_arg.getValue().c_str());
+				extInitStreams = ReadInitStreamsFile(filename);
+			}
+
 			//Master master(mpi_size);
-			auto sample = MakeSample(cnf, core_len, sample_size);
+			auto sample =  MakeSample(cnf, core_len, sample_size, extInitStreams);
 			int num_vars = sample[0].size();
 			BitMask out_mask;
 			for (int i = 0; i < num_vars; ++i)
