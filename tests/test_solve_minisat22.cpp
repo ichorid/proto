@@ -6,12 +6,15 @@ int main(int argc, char* argv[])
 {
 	// test basic solve 
 	{
-		const char* filename="cnf/hanoi4.cnf";
+		const char* filename="../cnf/Bivium.cnf";
 		Cnf cnf;
 		ReadCnfFile(filename, cnf);
 		Minisat22Wrapper WM;
 		SWrapper &W = WM;
 		W.InitSolver(cnf);
+		Clause tmp;
+		tmp.push_back(-5);
+		W.AddUCs(UnitClauseVector  (tmp));
 
 		W.Solve();
 		const SolverReport rep = W.GetReport();
@@ -32,13 +35,13 @@ int main(int argc, char* argv[])
 
 	// test solve with watch_scans limit
 	{
-		const char* filename="cnf/hanoi4.cnf";
+		const char* filename="../cnf/hanoi4.cnf";
 		Cnf cnf;
 		ReadCnfFile(filename, cnf);
 		Minisat22Wrapper WM;
 		SWrapper &W = WM;
 		W.InitSolver(cnf);
-		W.SetWatchScansLimit(10000);
+		W.SetWatchScansLimit(10002);
 
 		W.Solve();
 		const SolverReport rep = W.GetReport();

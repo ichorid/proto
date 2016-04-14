@@ -1,0 +1,10 @@
+--- ./core/Solver.h	2010-07-11 01:07:36.000000000 +0900
++++ ../minisat_blbd/core/Solver.h	2015-10-24 21:53:03.000000000 +0800
+@@ -138,6 +139,7 @@
+     //
+     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
+     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
++    unsigned long long int watch_scans; //added PROTO
+ 
+ protected:
+ 
