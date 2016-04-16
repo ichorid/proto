@@ -96,6 +96,17 @@ inline BitMask ExpandBM(const BitMask& m, const std::vector <int>& v)
 	return out;
 }
 
+inline std::vector <int> RemoveIntsFromVectorByBitMask (const std::vector <int>& vec, const BitMask& mask)
+{
+	std::vector <int> out;
+	for (auto v: vec)
+		if (!mask[v])
+			out.push_back(v);
+	return out;
+}
+
+
+
 //TODO: reimplement this stuff as templates
 /*
 inline std::vector<BitMask> ExpandBM(const std::vector<BitMask>& a, const std::vector <int>& v)

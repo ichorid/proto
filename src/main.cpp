@@ -104,6 +104,7 @@ int main(int argc, char* argv[])
 			TCLAP::ValueArg<int> outlen_arg		("o", "outlen","Num of out vars.", true, 0,"OUT_LEN", cmd);
 			TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER", cmd);
 			TCLAP::ValueArg <std::string> startingPointsFilename_arg ("", "starting_points","Starting points list filename", false, "","STPFILENAME", cmd);
+			TCLAP::ValueArg <std::string> knownVarsFilename_arg ("", "known_vars","Known vars filename.", false, "","KNVFILENAME", cmd);
 			TCLAP::ValueArg <std::string> extInitStreamsFilename_arg ("", "streams_file","External init streams (core vars values) filename", false, "","ISFILENAME", cmd);
 			TCLAP::SwitchArg modeUnsat_arg ("a", "mode-unsat","Experimental 'UNSAT' mode",cmd, false);
 			TCLAP::SwitchArg useLingeling_arg("", "ling","use Lingeling solver engine",cmd, false);
@@ -167,11 +168,25 @@ int main(int argc, char* argv[])
 			}
 
 			//Master master(mpi_size);
-			auto sample =  MakeSample(cnf, core_len, sample_size, extInitStreams);
+			auto sample = MakeSample(cnf, core_len, sample_size, extInitStreams);
 			int num_vars = sample[0].size();
+
+			PointId knownVars('0', num_vars);
+			if (knownVarsFilename_arg.isSet())
+			{
+				char filename[4096];
+				strcpy(filename, knownVarsFilename_arg.getValue().c_str());
+				knownVars = ReadPointsFile(filename, guessing_vars)[0];
+				LOG (INFO) << "Known vars:" << Point2Varstring (knownVars);
+				// Remove known vars from guessing vars
+				guessing_vars = RemoveIntsFromVectorByBitMask (guessing_vars, knownVars); 
+			}
+
 			BitMask out_mask;
 			for (int i = 0; i < num_vars; ++i)
 				out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
+
+			out_mask = BM_or(out_mask, knownVars);
 
 			// UNSAT mode option - make wrong UC assumptions for sample units
 			if (modeUnsat)
