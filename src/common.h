@@ -100,7 +100,7 @@ inline std::vector <int> RemoveIntsFromVectorByBitMask (const std::vector <int>&
 {
 	std::vector <int> out;
 	for (auto v: vec)
-		if (!mask[v])
+		if (!mask[v-1])
 			out.push_back(v);
 	return out;
 }
