@@ -176,8 +176,6 @@ worker_thread:
 			out_mask = BM_or(out_mask, knownVars);
 		}
 		assert(out_mask.size() == sample[0].size());
-		for (auto a: guessing_vars)
-			std::cout << " " << a;
 		// UNSAT mode option - make wrong UC assumptions for sample units
 		if (modeUnsat)
 		{
