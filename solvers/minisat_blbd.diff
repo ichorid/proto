@@ -1,0 +1,116 @@
+Только в ../minisat_blbd/core: depend.mk
+Только в ../minisat_blbd/core: Main.o
+diff -ur ./core/Makefile ../minisat_blbd/core/Makefile
+--- ./core/Makefile	2010-07-11 01:07:36.000000000 +0900
++++ ../minisat_blbd/core/Makefile	2015-10-22 19:03:48.000000000 +0800
+@@ -1,3 +1,4 @@
++MROOT = ../
+ EXEC      = minisat
+ DEPDIR    = mtl utils
+ 
+Только в ../minisat_blbd/core: minisat
+diff -ur ./core/Solver.cc ../minisat_blbd/core/Solver.cc
+--- ./core/Solver.cc	2010-07-11 01:07:36.000000000 +0900
++++ ../minisat_blbd/core/Solver.cc	2015-10-24 21:59:24.000000000 +0800
+@@ -79,6 +79,7 @@
+     //
+   , solves(0), starts(0), decisions(0), rnd_decisions(0), propagations(0), conflicts(0)
+   , dec_vars(0), clauses_literals(0), learnts_literals(0), max_literals(0), tot_literals(0)
++  , watch_scans(0) // added PROTO
+ 
+   , ok                 (true)
+   , cla_inc            (1)
+@@ -95,6 +96,7 @@
+     //
+   , conflict_budget    (-1)
+   , propagation_budget (-1)
++  , watch_scans_budget (-1) //added PROTO
+   , asynch_interrupt   (false)
+ {}
+
+@@ -142,7 +142,7 @@ 
+ public:
+     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
+     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
+     unsigned long long int watch_scans; //added PROTO
+-    int bitN,up;
++    int bitN=-1,up;
+     vec<int> t;
+ 
+ protected:
+
+@@ -498,6 +500,7 @@
+                 uncheckedEnqueue(first, cr);
+ 
+         NextClause:;
++	watch_scans++; // added PROTO
+         }
+         ws.shrink(i - j);
+     }
+diff -ur ./core/Solver.h ../minisat_blbd/core/Solver.h
+--- ./core/Solver.h	2010-07-11 01:07:36.000000000 +0900
++++ ../minisat_blbd/core/Solver.h	2015-10-24 21:53:03.000000000 +0800
+@@ -95,6 +95,7 @@
+     //
+     void    setConfBudget(int64_t x);
+     void    setPropBudget(int64_t x);
++    void    setScansBudget(int64_t x);
+     void    budgetOff();
+     void    interrupt();          // Trigger a (potentially asynchronous) interruption of the solver.
+     void    clearInterrupt();     // Clear interrupt indicator flag.
+@@ -137,6 +138,7 @@
+     //
+     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
+     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
++    unsigned long long int watch_scans; //added PROTO
+ 
+ protected:
+ 
+@@ -208,6 +210,7 @@
+     //
+     int64_t             conflict_budget;    // -1 means no budget.
+     int64_t             propagation_budget; // -1 means no budget.
++    int64_t             watch_scans_budget; // added PROTO. -1 means no budget.
+     bool                asynch_interrupt;
+ 
+     // Main internal methods:
+@@ -338,12 +341,14 @@
+ }
+ inline void     Solver::setConfBudget(int64_t x){ conflict_budget    = conflicts    + x; }
+ inline void     Solver::setPropBudget(int64_t x){ propagation_budget = propagations + x; }
++inline void     Solver::setScansBudget(int64_t x){ watch_scans_budget= watch_scans  + x; } //added PROTO
+ inline void     Solver::interrupt(){ asynch_interrupt = true; }
+ inline void     Solver::clearInterrupt(){ asynch_interrupt = false; }
+ inline void     Solver::budgetOff(){ conflict_budget = propagation_budget = -1; }
+ inline bool     Solver::withinBudget() const {
+     return !asynch_interrupt &&
+            (conflict_budget    < 0 || conflicts < (uint64_t)conflict_budget) &&
++           (watch_scans_budget < 0 || watch_scans < (uint64_t)watch_scans_budget) && // added PROTO
+            (propagation_budget < 0 || propagations < (uint64_t)propagation_budget); }
+ 
+ // FIXME: after the introduction of asynchronous interrruptions the solve-versions that return a
+Только в ../minisat_blbd/core: Solver.o
+diff -ur ./utils/Options.h ../minisat_blbd/utils/Options.h
+--- ./utils/Options.h	2010-07-11 01:07:36.000000000 +0900
++++ ../minisat_blbd/utils/Options.h	2015-11-15 22:17:14.819026953 +0800
+@@ -282,15 +282,15 @@
+         if (range.begin == INT64_MIN)
+             fprintf(stderr, "imin");
+         else
+-            fprintf(stderr, "%4"PRIi64, range.begin);
++            fprintf(stderr, "%4" PRIi64, range.begin);
+ 
+         fprintf(stderr, " .. ");
+         if (range.end == INT64_MAX)
+             fprintf(stderr, "imax");
+         else
+-            fprintf(stderr, "%4"PRIi64, range.end);
++            fprintf(stderr, "%4" PRIi64, range.end);
+ 
+-        fprintf(stderr, "] (default: %"PRIi64")\n", value);
++        fprintf(stderr, "] (default: %" PRIi64 ")\n", value);
+         if (verbose){
+             fprintf(stderr, "\n        %s\n", description);
+             fprintf(stderr, "\n");
+Только в ../minisat_blbd/utils: Options.o
+Только в ../minisat_blbd/utils: System.o

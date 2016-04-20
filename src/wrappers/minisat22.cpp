@@ -7,6 +7,7 @@ void Minisat22Wrapper::addProblem(const Cnf& cnf)
 {
 	// ACHTUNG! Minisat uses inverted signs in  its lits representation
 	// e.g. lit -15 should be created as mkLit(15, true)
+	assert(S.nVars()==0);
 	for (auto cl: cnf){
 		Minisat::vec <Minisat::Lit> new_clause;
 		for (auto lt: cl){
