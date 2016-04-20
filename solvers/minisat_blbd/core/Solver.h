@@ -142,7 +142,7 @@ public:
     uint64_t solves, starts, decisions, rnd_decisions, propagations, conflicts;
     uint64_t dec_vars, clauses_literals, learnts_literals, max_literals, tot_literals;
     unsigned long long int watch_scans; //added PROTO
-    int bitN,up;
+    int bitN=-1,up;
     vec<int> t;
 
 protected:
