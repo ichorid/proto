@@ -14,11 +14,64 @@ MpiBase* mpiS;
 #define TINY_SAMPLE_SIZE 10
 
 inline std::string IntVector2String(const std::vector <int> &p ) { std::stringstream out; out << std::setw(5); for (const auto& n: p)  out << n << " " ; return out.str();}
+
+
+PointStats RiseFallSearch (
+		Master& master,
+		TabooSearch& searchEngine,
+		const FitnessFunction& fitnessFunction,
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample  sample,
+		const int num_points,
+		const int groundLevel,
+		const int stallLimit
+		)
+{
+	PointId basePoint = PointId(guessing_vars.size(), 0);
+	LOG(INFO) << " STAGE 1 - RISE";
+	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
+	const int try_points = 10;
+	for (int i = groundLevel; i <= guessing_vars.size() && searchEngine.origin_queue_.size() == 0; ++i)
+	{
+		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
+		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
+		for (const auto &r: results)
+			searchEngine.AddPointResults(fitnessFunction, r);
+	}
+
+	LOG(INFO) << " STAGE 2 - FALL";
+	PointStats lastRecord;
+	for (int stallCount=0; stallCount < stallLimit;)
+	{
+		auto probe_points = searchEngine.GenerateNewPoints(num_points); 
+		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
+		for (const auto &r: results)
+			searchEngine.AddPointResults(fitnessFunction, r);
+		if (searchEngine.GetCurrentRecord().id == lastRecord.id)
+		{
+			++stallCount;
+		}
+		else
+		{
+			lastRecord = searchEngine.GetCurrentRecord();
+			stallCount = 0;
+		}
+	}
+	while(!searchEngine.origin_queue_.empty()) searchEngine.origin_queue_.pop();
+	searchEngine.ResetCurrentRecord();
+
+	return lastRecord;
+}
+
+
+
+
 void Search 	(
 		Master master,
 		TabooSearch searchEngine,
 		const FitnessFunction fitnessFunction,
-		const int     num_iterations,
+		const int num_iterations,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample  sample,
@@ -28,8 +81,6 @@ void Search 	(
 		const std::vector <PointId> starting_points = std::vector <PointId> ()
 		)
 {
-	std::vector <PointStats> localRecords;
-	std::vector <int> varsCount(guessing_vars.size(), 0);
 
 	// Stage 0: check starting point if given one
 	if (starting_points.size() > 0)
@@ -40,44 +91,24 @@ void Search 	(
 			searchEngine.AddPointResults(fitnessFunction, r);
 	}
 
-	for (int j=0; j < num_iterations; ++j)
+	std::vector <int> varsCount(guessing_vars.size(), 0);
+	std::vector <PointStats> localRecords;
+	for (int j = 0; j < num_iterations; ++j)
 	{
-		PointId basePoint = PointId(guessing_vars.size(), 0);
-		LOG(INFO) << " STAGE 1 - RISE";
-		Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
-		const int try_points = 10;
-		for (int i = groundLevel; i <= guessing_vars.size() && searchEngine.origin_queue_.size() == 0; ++i)
-		{
-			auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
-			auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
-			for (const auto &r: results)
-				searchEngine.AddPointResults(fitnessFunction, r);
-		}
-
-		LOG(INFO) << " STAGE 2 - FALL";
-		PointStats lastRecord;
-		for (int i=0, stallCount=0; stallCount < stallLimit; ++i)
-		{
-			auto probe_points = searchEngine.GenerateNewPoints(num_points); 
-			auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
-			for (const auto &r: results)
-				searchEngine.AddPointResults(fitnessFunction, r);
-			if (searchEngine.GetCurrentRecord().id == lastRecord.id)
-			{
-				++stallCount;
-			}
-			else
-			{
-				lastRecord = searchEngine.GetCurrentRecord();
-				stallCount = 0;
-			}
-		}
-		localRecords.push_back(lastRecord);
-		for (size_t i=0; i < lastRecord.id.size(); ++i)
+		PointStats lastRecord = RiseFallSearch (
+			master,
+			searchEngine,
+			fitnessFunction,
+			guessing_vars,
+			out_mask,
+			sample,
+			num_points,
+			groundLevel,
+			stallLimit);
+		for (size_t i = 0; i < lastRecord.id.size(); ++i)
 			varsCount[i] += lastRecord.id[i];
 		LOG(INFO) << "Vars stats: " <<  IntVector2String (varsCount);
-		while(!searchEngine.origin_queue_.empty()) searchEngine.origin_queue_.pop();
-		searchEngine.ResetCurrentRecord();
+		localRecords.push_back (lastRecord);
 	}
 
 }
