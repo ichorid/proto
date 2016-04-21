@@ -28,38 +28,38 @@ PointStats RiseFallSearch (
 		const int stallLimit
 		)
 {
-	PointId basePoint = PointId(guessing_vars.size(), 0);
+	PointId basePoint = PointId (guessing_vars.size (), 0);
 	LOG(INFO) << " STAGE 1 - RISE";
-	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
+	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	for (int i = groundLevel; i <= guessing_vars.size() && searchEngine.origin_queue_.size() == 0; ++i)
+	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.size () == 0; ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
-			searchEngine.AddPointResults(fitnessFunction, r);
+			searchEngine.AddPointResults (fitnessFunction, r);
 	}
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
 	for (int stallCount=0; stallCount < stallLimit;)
 	{
-		auto probe_points = searchEngine.GenerateNewPoints(num_points); 
-		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
+		auto probe_points = searchEngine.GenerateNewPoints (num_points); 
+		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
 		for (const auto &r: results)
-			searchEngine.AddPointResults(fitnessFunction, r);
-		if (searchEngine.GetCurrentRecord().id == lastRecord.id)
+			searchEngine.AddPointResults (fitnessFunction, r);
+		if (searchEngine.GetCurrentRecord ().id == lastRecord.id)
 		{
 			++stallCount;
 		}
 		else
 		{
-			lastRecord = searchEngine.GetCurrentRecord();
+			lastRecord = searchEngine.GetCurrentRecord ();
 			stallCount = 0;
 		}
 	}
-	while(!searchEngine.origin_queue_.empty()) searchEngine.origin_queue_.pop();
-	searchEngine.ResetCurrentRecord();
+	while(!searchEngine.origin_queue_.empty ()) searchEngine.origin_queue_.pop ();
+	searchEngine.ResetCurrentRecord ();
 
 	return lastRecord;
 }
