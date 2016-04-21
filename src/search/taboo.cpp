@@ -29,7 +29,7 @@ TabooSearch::~TabooSearch()
 		delete point_pair.second;
 }
 
-std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
+std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point, const PointId& fixedVarsMask)
 {
 	std::vector<PointId> result;
 	for (int i = 0; i < point.size(); ++i)
@@ -37,6 +37,7 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point)
 		PointId tmp = point;
 		//FlipBit(tmp[i]);
 		tmp[i]=0;
+		BM_or(point, fixedVarsMask);
 		if (!PointChecked(tmp))
 		{
 			result.push_back(tmp);
@@ -73,7 +74,7 @@ void TabooSearch::AddPointResults (FitnessFunction fitnessFunction, const PointR
 	}
 }
 
-std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates)
+std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates, const PointId& fixedVarsMask)
 {
 	// ACHTUNG!  Dequeues priority_queue in process!!
 	std::unordered_set <PointId> candidates;

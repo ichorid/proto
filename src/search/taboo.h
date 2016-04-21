@@ -27,9 +27,6 @@ public:
 typedef std::priority_queue <PointStats*, std::vector <PointStats*>, ComparePointIncapacity> BestIncapacityQueue;
 typedef std::unordered_map <PointId, PointStats*> PointStatsDB;
 
-inline std::string Point2Bitstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "0" : "1") ; return out;}
-inline std::string Point2Varstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "" : " "+std::to_string(i+1)); return out;}
-
 class TabooSearch
 {
 public:
@@ -54,7 +51,7 @@ public:
 
 	// Minimal required number of solved (SAT) problems in a sample
 	int sat_threshold_ = 1;
-	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1);
+	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1, const PointId& fixedVarsMask = PointId());
 	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const PointId& basePoint);
 	void Search(
 		const int     num_iterations,
@@ -63,6 +60,7 @@ public:
 	       	const BitMask out_mask,
 	      	const Sample  sample,
 		const int num_points = 1);
+	inline PointStats GetPointStats(const PointId& id) { return *checked_points_[id];}
 private:
 
 	// Hash table. Contains all evaluated points and their stats
@@ -76,7 +74,7 @@ private:
 	//void LoadNewSample (int sample_size);
 
 	// Service methods
-	std::vector<PointId> GetUncheckedHammingNbhd (const PointId& point);
+	std::vector<PointId> GetUncheckedHammingNbhd (const PointId& point, const PointId& fixedVarsMask = PointId());
 	inline bool PointChecked(const PointId& id) const { return checked_points_.count(id) > 0; }
 };
 
