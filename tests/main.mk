@@ -1,4 +1,4 @@
-MINISAT := minisat_blbd
+MINISAT := minisat22
 BUILD_DIR := ../build
 CXXFLAGS := -g -std=c++11 -O5 -pg
 

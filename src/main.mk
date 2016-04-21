@@ -1,4 +1,4 @@
-MINISAT := $(MINISAT)
+MINISAT := minisat22
 TARGET := fhsat
 
 CXX=mpic++
