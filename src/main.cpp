@@ -48,6 +48,7 @@ PointStats RiseFallSearch (
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
+	lastRecord.id = searchEngine.GetCurrentRecord ().id; //FIXME: corner cases!
 	for (int stallCount=0; stallCount < stallLimit;)
 	{
 		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
@@ -99,7 +100,7 @@ void Search 	(
 
 	std::valarray <size_t> varsOrder (guessing_vars.size());
 	std::iota (std::begin(varsOrder), std::end(varsOrder), 0);
-	std::valarray <int> varsCount (guessing_vars.size());
+	std::valarray <double> varsCount (guessing_vars.size());
 	std::vector <PointStats> localRecords;
 	for (size_t k = 0; k < groundLevel; k+=varFixStep)
 	{
@@ -122,12 +123,18 @@ void Search 	(
 				groundLevel,
 				stallLimit);
 
+			if (lastRecord.sat_total == 0)
+				continue;
+			float_t fit = (float_t(1) / pow(2.0, lastRecord.best_incapacity)) / float_t (CountOnes(lastRecord.id));
 			for (size_t i = 0; i < lastRecord.id.size(); ++i)
-				varsCount[i] += lastRecord.id[i];
+				if (lastRecord.id[i] == 1)
+					varsCount[i] += fit;
 			localRecords.push_back (lastRecord);
 			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), 
 					[&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
-			LOG(INFO) << "Vars stats: " << Vec2String (varsCount, " ") 
+			std::valarray <double> tmp = varsCount;
+			std::valarray <double> tmp2 = std::log10(tmp);
+			LOG(INFO) << "Vars stats: " << Vec2String (tmp2, " ") 
 				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");
 
 			//FIXME: make db private again, implement this
