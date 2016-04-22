@@ -92,7 +92,7 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 			level_desired_candidates += slice_size;
 		}
 		// Select next origin candidate from top incapacity queue
-		auto nbhd = GetUncheckedHammingNbhd(origin_queue_.top()->id);
+		auto nbhd = GetUncheckedHammingNbhd(origin_queue_.top()->id, fixedVarsMask);
 		if (nbhd.size() == 0)
 		{
 			// All origin's neighbours were already checked, so
@@ -129,13 +129,18 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 		const int desired_candidates,
 		const PointId& basePoint)
 {
+
 	std::unordered_set <PointId> candidates;
+	size_t baseSize = basePoint.size();
+	size_t baseCount0 = CountZeroes(basePoint);
+	size_t baseCount1 = baseSize-baseCount0;
+	assert (num_ones >= baseCount1);
 	while (candidates.size() < desired_candidates)
 	{
 		//FIXME: add safety checks!
 		PointId randomBools;
-		for (size_t i=0; i < CountZeroes(basePoint); ++i)
-			randomBools.push_back(i < num_ones ? 1 : 0);
+		for (size_t i=0; i < baseCount0; ++i)
+			randomBools.push_back(i < (num_ones - baseCount1) ? 1 : 0);
 		std::shuffle(randomBools.begin(), randomBools.end(), rng); 
 
 		PointId point;
