@@ -37,7 +37,7 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point,
 		PointId tmp = point;
 		//FlipBit(tmp[i]);
 		tmp[i]=0;
-		BM_or(point, fixedVarsMask);
+		tmp = BM_or(tmp, fixedVarsMask);
 		if (!PointChecked(tmp))
 		{
 			result.push_back(tmp);
@@ -78,9 +78,10 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 {
 	// ACHTUNG!  Dequeues priority_queue in process!!
 	std::unordered_set <PointId> candidates;
+	std::vector <PointId> stash;
+	std::stack <PointStats*> tmp_stack;
 	int level = 0;
 	int level_desired_candidates = 0;
-	std::stack <PointStats*> tmp_stack;
 	while (origin_queue_.size() > 0 && candidates.size() < desired_candidates)
 	{
 		if (candidates.size() == level_desired_candidates)
@@ -105,14 +106,26 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 
 		// Append nbhd to candidates
 		for (auto cand: nbhd)
-			if(candidates.count(cand) == 0 && (candidates.size() < level_desired_candidates))
-				candidates.insert(cand);
+			if(candidates.count(cand) == 0)
+				if (candidates.size() < level_desired_candidates)
+					candidates.insert(cand);
+				else
+					stash.push_back(cand);
+
 		// Dig deeper into prio queue
 		if (origin_queue_.size() > 1)
 		{
 			tmp_stack.push(origin_queue_.top());
 			origin_queue_.pop();
 		}
+		else
+		{
+			for (auto cand: stash)
+				if(candidates.count(cand) == 0 && candidates.size() < level_desired_candidates)
+					candidates.insert(cand);
+			break;
+		}
+
 	}
 	// Restore prio queue
 	// Actually algorithm works better if we don't restore the queue!
@@ -123,6 +136,7 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 	}
 	return std::vector <PointId> (candidates.begin(), candidates.end());
 }
+
 
 std::vector <PointId> TabooSearch::GenerateRandomPoints(
 		const int num_ones,

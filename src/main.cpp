@@ -34,11 +34,12 @@ PointStats RiseFallSearch (
 	//TODO: switch to valarray as PointID base container
 	for (int i=0; i<fixedVars.size(); ++i)
 		basePoint[fixedVars[i]] = 1; 
+	assert (CountOnes(basePoint) <= groundLevel);
 
 	LOG(INFO) << " STAGE 1 - RISE";
 	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.size () == 0; ++i)
+	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
@@ -48,8 +49,7 @@ PointStats RiseFallSearch (
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
-	lastRecord.id = searchEngine.GetCurrentRecord ().id; //FIXME: corner cases!
-	for (int stallCount=0; stallCount < stallLimit;)
+	for (int stallCount=0; !searchEngine.origin_queue_.empty() && (stallCount < stallLimit);)
 	{
 		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
