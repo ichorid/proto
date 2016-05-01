@@ -1,6 +1,7 @@
 #define ELPP_NO_DEFAULT_LOG_FILE
 #include "utils.h"
 #include <iterator>
+#include <valarray>
 #include "peer.h"
 #include "fitness.h"
 #include "search/taboo.h"
@@ -23,43 +24,49 @@ PointStats RiseFallSearch (
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample  sample,
+		const std::valarray <size_t> &fixedVars,
 		const int num_points,
 		const int groundLevel,
 		const int stallLimit
 		)
 {
-	PointId basePoint = PointId(guessing_vars.size(), 0);
+	PointId basePoint = PointId (guessing_vars.size(), 0);
+	//TODO: switch to valarray as PointID base container
+	for (int i=0; i<fixedVars.size(); ++i)
+		basePoint[fixedVars[i]] = 1; 
+	assert (CountOnes(basePoint) <= groundLevel);
+
 	LOG(INFO) << " STAGE 1 - RISE";
-	Sample sample_tiny(sample.begin(), sample.begin() + TINY_SAMPLE_SIZE);
+	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	for (int i = groundLevel; i <= guessing_vars.size() && searchEngine.origin_queue_.size() == 0; ++i)
+	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
-			searchEngine.AddPointResults(fitnessFunction, r);
+			searchEngine.AddPointResults (fitnessFunction, r);
 	}
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
-	for (int stallCount=0; stallCount < stallLimit;)
+	for (int stallCount=0; !searchEngine.origin_queue_.empty() && (stallCount < stallLimit);)
 	{
-		auto probe_points = searchEngine.GenerateNewPoints(num_points); 
-		auto results = master.EvalPoints(probe_points, guessing_vars, out_mask, sample);
+		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
+		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
 		for (const auto &r: results)
-			searchEngine.AddPointResults(fitnessFunction, r);
-		if (searchEngine.GetCurrentRecord().id == lastRecord.id)
+			searchEngine.AddPointResults (fitnessFunction, r);
+		if (searchEngine.GetCurrentRecord ().id == lastRecord.id)
 		{
 			++stallCount;
 		}
 		else
 		{
-			lastRecord = searchEngine.GetCurrentRecord();
+			lastRecord = searchEngine.GetCurrentRecord ();
 			stallCount = 0;
 		}
 	}
-	while(!searchEngine.origin_queue_.empty()) searchEngine.origin_queue_.pop();
-	searchEngine.ResetCurrentRecord();
+	while(!searchEngine.origin_queue_.empty ()) searchEngine.origin_queue_.pop ();
+	searchEngine.ResetCurrentRecord ();
 
 	return lastRecord;
 }
@@ -78,11 +85,11 @@ void Search 	(
 		const int num_points,
 		const int groundLevel,
 		const int stallLimit,
+		const size_t varFixStep,
 		const std::vector <PointId> starting_points = std::vector <PointId> ()
 		)
 {
 
-	// Stage 0: check starting point if given one
 	if (starting_points.size() > 0)
 	{
 		LOG(INFO) << " STARTING POINT CHECK";
@@ -91,26 +98,59 @@ void Search 	(
 			searchEngine.AddPointResults(fitnessFunction, r);
 	}
 
-	std::vector <int> varsCount(guessing_vars.size(), 0);
+	std::valarray <size_t> varsOrder (guessing_vars.size());
+	std::iota (std::begin(varsOrder), std::end(varsOrder), 0);
+	std::valarray <double> varsCount (guessing_vars.size());
 	std::vector <PointStats> localRecords;
-	for (int j = 0; j < num_iterations; ++j)
+	for (size_t k = 0; k < groundLevel; k+=varFixStep)
 	{
-		PointStats lastRecord = RiseFallSearch (
-			master,
-			searchEngine,
-			fitnessFunction,
-			guessing_vars,
-			out_mask,
-			sample,
-			num_points,
-			groundLevel,
-			stallLimit);
-		for (size_t i = 0; i < lastRecord.id.size(); ++i)
-			varsCount[i] += lastRecord.id[i];
-		LOG(INFO) << "Vars stats: " <<  IntVector2String (varsCount);
-		localRecords.push_back (lastRecord);
-	}
+		std::valarray <size_t> fixedVars (varsOrder[std::slice(0,k,1)]); // Select k first vars in array
+		std::valarray <char>   fixedVarsMask (guessing_vars.size());
+		fixedVarsMask[fixedVars] = char(1);
+		LOG(INFO) << "Fixed vars: " << Vec2String (std::valarray <size_t> (fixedVars+size_t(1)), " ")
+			  << "Fixed vars mask: " << Vec2String (fixedVarsMask);
+		for (int j = 0; j < num_iterations; ++j)
+		{
+			PointStats lastRecord = RiseFallSearch (
+				master,
+				searchEngine,
+				fitnessFunction,
+				guessing_vars,
+				out_mask,
+				sample,
+				fixedVars,
+				num_points,
+				groundLevel,
+				stallLimit);
 
+			if (lastRecord.sat_total == 0)
+				continue;
+			float_t fit = (float_t(1) / pow(2.0, lastRecord.best_incapacity)) / float_t (CountOnes(lastRecord.id));
+			for (size_t i = 0; i < lastRecord.id.size(); ++i)
+				if (lastRecord.id[i] == 1)
+					varsCount[i] += fit;
+			localRecords.push_back (lastRecord);
+			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), 
+					[&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
+			std::valarray <double> tmp = varsCount;
+			std::valarray <double> tmp2 = std::log10(tmp);
+			LOG(INFO) << "Vars stats: " << Vec2String (tmp2, " ") 
+				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");
+
+			//FIXME: make db private again, implement this
+			//as a procedure
+		PointStats *ps = &lastRecord;
+		LOG(INFO) << " Final record: " 
+			<< std::setw(5) << CountOnes(ps->id) << " "
+			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
+			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
+			<< std::setw(5) << ps->sat_total << " /" 
+			<< std::setw(5) << sample.size() << " " 
+			<< Point2Bitstring(ps->id) << " ccc "
+			<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+		}
+	}
 }
 
 int main(int argc, char* argv[])
@@ -149,6 +189,7 @@ int main(int argc, char* argv[])
 	BitMask out_mask;
 	int num_vars;
 	int stallLimit;
+	int varFixStep;
 	PointId knownVars;
 	try
 	{
@@ -164,6 +205,7 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER", cmd);
 		TCLAP::ValueArg<int> groundLevel_arg	("g", "ground","Starting backdoor size for bottom-up search.", false, 0, "GROUND", cmd);
 		TCLAP::ValueArg<int> stallLimit_arg	("", "stall_limit","Maximum number of failed search attempts before giving up.", false, 123456789, "STALL_LIMIT", cmd);
+		TCLAP::ValueArg<int> varFixStep_arg  ("", "var_step","Fix this number of vars each Rise-Fall iteration.", false, 1, "var_step", cmd);
 		TCLAP::ValueArg <std::string> startingPointsFilename_arg ("", "starting_points","Starting points list filename", false, "","STPFILENAME", cmd);
 		TCLAP::ValueArg <std::string> knownVarsFilename_arg ("", "known_vars","Known vars filename.", false, "","KNVFILENAME", cmd);
 		TCLAP::ValueArg <std::string> extInitStreamsFilename_arg ("", "streams_file","External init streams (core vars values) filename", false, "","ISFILENAME", cmd);
@@ -183,6 +225,7 @@ int main(int argc, char* argv[])
 		modeUnsat = modeUnsat_arg.getValue();
 		groundLevel = groundLevel_arg.getValue();
 		stallLimit = stallLimit_arg.getValue();
+		varFixStep = varFixStep_arg.getValue();
 		solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
 		ReadCnfFile(filename_arg.getValue().c_str(), cnf, var_layers);
 
@@ -261,6 +304,7 @@ worker_thread:
 			num_points,
 			groundLevel,
 			stallLimit,
+			varFixStep,
 			starting_points);
 	}
 

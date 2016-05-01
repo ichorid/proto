@@ -174,5 +174,10 @@ std::vector<PointId> GetHammingNbhd (PointId point)
 	return result;
 }
 */
+inline std::string Point2Bitstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "0" : "1") ; return out;}
+inline std::string Point2Varstring(const PointId& p) { std::string out; for (int i=0; i<p.size(); ++i) out+= (p[i]==0 ? "" : " "+std::to_string(i+1)); return out;}
+//template <typename T> std::string Vec2String(const std::vector <T> & vec) { std::string out; for (T elem: vec) {out+= (std::to_string(elem) + " ");} return out;}
+template <typename T> std::string Vec2String(const T & vec, const char* s = "") { std::string out; for (auto elem: vec) {out+= (std::to_string(elem) + s);} return out;}
+
 
 #endif
