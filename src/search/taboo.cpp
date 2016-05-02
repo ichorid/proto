@@ -148,7 +148,14 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 	size_t baseSize = basePoint.size();
 	size_t baseCount0 = CountZeroes(basePoint);
 	size_t baseCount1 = baseSize-baseCount0;
-	assert (num_ones >= baseCount1);
+	assert (num_ones <= baseCount0);
+	if (num_ones == baseCount1)
+	{
+		if (!PointChecked(basePoint))
+			candidates.insert(basePoint);
+		goto end;
+	}
+		
 	while (candidates.size() < desired_candidates)
 	{
 		//FIXME: add safety checks!
@@ -164,8 +171,8 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 
 		if (!PointChecked(point) && candidates.count(point) == 0)
 			candidates.insert(point);
-
 	}
+end:
 	return std::vector <PointId> (candidates.begin(), candidates.end());
 }
 

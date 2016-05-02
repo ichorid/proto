@@ -7,6 +7,7 @@
 #include "search/taboo.h"
 #include "easylogging++.h"
 #include "tclap/CmdLine.h"
+#include "assert.h"
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -34,12 +35,13 @@ PointStats RiseFallSearch (
 	//TODO: switch to valarray as PointID base container
 	for (int i=0; i<fixedVars.size(); ++i)
 		basePoint[fixedVars[i]] = 1; 
-	assert (CountOnes(basePoint) <= groundLevel);
+	//assert (CountOnes(basePoint) < groundLevel);
+	LOG(INFO) << "BP: " << CountOnes(basePoint) << " gl:" << groundLevel;
 
 	LOG(INFO) << " STAGE 1 - RISE";
 	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
-	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
+	for (int i = (groundLevel > fixedVars.size() ? groundLevel : fixedVars.size()); i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
@@ -51,7 +53,8 @@ PointStats RiseFallSearch (
 	PointStats lastRecord;
 	for (int stallCount=0; !searchEngine.origin_queue_.empty() && (stallCount < stallLimit);)
 	{
-		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
+		//auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
+		auto probe_points = searchEngine.GenerateNewPoints (num_points); 
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
 		for (const auto &r: results)
 			searchEngine.AddPointResults (fitnessFunction, r);
@@ -102,9 +105,19 @@ void Search 	(
 	std::iota (std::begin(varsOrder), std::end(varsOrder), 0);
 	std::valarray <double> varsCount (guessing_vars.size());
 	std::vector <PointStats> localRecords;
-	for (size_t k = 0; k < groundLevel; k+=varFixStep)
+	for (size_t k = 0; /*k < groundLevel*/; k+=varFixStep)
 	{
-		std::valarray <size_t> fixedVars (varsOrder[std::slice(0,k,1)]); // Select k first vars in array
+		//std::valarray <size_t> fixedVars (varsOrder[std::slice(0,k,1)]); // Select k first vars in array
+		//std::valarray <size_t> fixedVars (varsOrder[std::slice(0,k>30 ? 30 : 0,1)]); // Select k first vars in array
+
+		std::vector <size_t> tmp;
+		if (!localRecords.empty())
+			for (int i=0; i<localRecords.back().id.size(); ++i)
+				if (localRecords.back().id[i])
+					tmp.push_back(i+1);
+
+
+		std::valarray <size_t> fixedVars (tmp.data(), tmp.size()); // Select k first vars in array
 		std::valarray <char>   fixedVarsMask (guessing_vars.size());
 		fixedVarsMask[fixedVars] = char(1);
 		LOG(INFO) << "Fixed vars: " << Vec2String (std::valarray <size_t> (fixedVars+size_t(1)), " ")
