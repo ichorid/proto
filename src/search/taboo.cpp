@@ -148,7 +148,7 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 	size_t baseSize = basePoint.size();
 	size_t baseCount0 = CountZeroes(basePoint);
 	size_t baseCount1 = baseSize-baseCount0;
-	assert (num_ones <= baseCount0);
+	assert (num_ones >= baseCount1);
 	if (num_ones == baseCount1)
 	{
 		if (!PointChecked(basePoint))

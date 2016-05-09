@@ -114,7 +114,8 @@ void Search 	(
 		if (!localRecords.empty())
 			for (int i=0; i<localRecords.back().id.size(); ++i)
 				if (localRecords.back().id[i])
-					tmp.push_back(i+1);
+					tmp.push_back(i);
+					//tmp.push_back(i+1);
 
 
 		std::valarray <size_t> fixedVars (tmp.data(), tmp.size()); // Select k first vars in array
@@ -152,16 +153,16 @@ void Search 	(
 
 			//FIXME: make db private again, implement this
 			//as a procedure
-		PointStats *ps = &lastRecord;
-		LOG(INFO) << " Final record: " 
-			<< std::setw(5) << CountOnes(ps->id) << " "
-			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
-			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
-			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
-			<< std::setw(5) << ps->sat_total << " /" 
-			<< std::setw(5) << sample.size() << " " 
-			<< Point2Bitstring(ps->id) << " ccc "
-			<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+			PointStats *ps = &lastRecord;
+			LOG(INFO) << " Final record: " 
+				<< std::setw(5) << CountOnes(ps->id) << " "
+				<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
+				<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+				<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
+				<< std::setw(5) << ps->sat_total << " /" 
+				<< std::setw(5) << sample.size() << " " 
+				<< Point2Bitstring(ps->id) << " ccc "
+				<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
 		}
 	}
 }
@@ -204,6 +205,7 @@ int main(int argc, char* argv[])
 	int stallLimit;
 	int varFixStep;
 	PointId knownVars;
+	Sample sample;
 	try
 	{
 		// Read command line parameters via TCLAP
@@ -244,7 +246,14 @@ int main(int argc, char* argv[])
 
 		// Initialize worker processes
 		if (mpi_rank > 0)
-			goto worker_thread;
+		{
+			Worker worker(cnf, scans_limit, 0, solverType);
+			worker.MainJobCycle();
+			return 0;
+		}
+
+		sample = MakeSample(cnf, core_len, sample_size, extInitStreams);
+		num_vars = sample[0].size();
 		if (var_layers.size() == 0)
 		{
 			LOG(INFO) << " No variable layers data found in CNF file. Will solve on core variables.";
@@ -257,12 +266,8 @@ int main(int argc, char* argv[])
 			guessing_vars = var_layers[guessing_layer];
 		}
 
-		if (startingPointsFilename_arg.isSet())
-		{
-			starting_points = ReadPointsFile(startingPointsFilename_arg.getValue().c_str(), guessing_vars);
-			for (auto a: starting_points)
-				LOG (INFO) << "Starting point:" << Point2Varstring (a);
-		}
+		for (int i = 0; i < num_vars; ++i)
+			out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
 
 		if (extInitStreamsFilename_arg.isSet())
 			extInitStreams = ReadInitStreamsFile(extInitStreamsFilename_arg.getValue().c_str());
@@ -272,23 +277,7 @@ int main(int argc, char* argv[])
 			knownVars = ReadPointsFile(knownVarsFilename_arg.getValue().c_str(), guessing_vars)[0];
 			LOG (INFO) << "Known vars:" << Point2Varstring (knownVars);
 		}
-	}
-	catch (TCLAP::ArgException &e)
-		{std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;}
 
-worker_thread:
-	if (mpi_rank > 0)
-	{
-		Worker worker(cnf, scans_limit, 0, solverType);
-		worker.MainJobCycle();
-	}
-	else
-	{
-		auto sample = MakeSample(cnf, core_len, sample_size, extInitStreams);
-		num_vars = sample[0].size();
-
-		for (int i = 0; i < num_vars; ++i)
-			out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
 		// Remove known vars from guessing vars
 		if (!knownVars.empty())
 		{
@@ -296,30 +285,41 @@ worker_thread:
 			out_mask = BM_or(out_mask, knownVars);
 		}
 		assert(out_mask.size() == sample[0].size());
-		// UNSAT mode option - make wrong UC assumptions for sample units
-		if (modeUnsat)
+
+		if (startingPointsFilename_arg.isSet())
 		{
-			std::random_device rng;
-			std::mt19937 mt(rng());
-			std::uniform_int_distribution <int> rnd_bit (0,1);
-			for (auto &unit: sample)
-				for (int i = 0; i < (num_vars - out_len); ++i)
-					if (rnd_bit(mt))
-						unit[i] *= -1;
+			starting_points = ReadPointsFile(startingPointsFilename_arg.getValue().c_str(), guessing_vars);
+			for (auto a: starting_points)
+				LOG (INFO) << "Starting point:" << Point2Varstring (a);
 		}
-		Search (Master(mpi_size),
-			TabooSearch(sat_threshold),
-			(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction),
-			num_iterations,
-			guessing_vars,
-			out_mask,
-			sample,
-			num_points,
-			groundLevel,
-			stallLimit,
-			varFixStep,
-			starting_points);
+
 	}
+	catch (TCLAP::ArgException &e)
+		{std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;}
+
+	// UNSAT mode option - make wrong UC assumptions for sample units
+	if (modeUnsat)
+	{
+		std::random_device rng;
+		std::mt19937 mt(rng());
+		std::uniform_int_distribution <int> rnd_bit (0,1);
+		for (auto &unit: sample)
+			for (int i = 0; i < (num_vars - out_len); ++i)
+				if (rnd_bit(mt))
+					unit[i] *= -1;
+	}
+	Search (Master(mpi_size),
+		TabooSearch(sat_threshold),
+		(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction),
+		num_iterations,
+		guessing_vars,
+		out_mask,
+		sample,
+		num_points,
+		groundLevel,
+		stallLimit,
+		varFixStep,
+		starting_points);
 
 	return 0;
 }
