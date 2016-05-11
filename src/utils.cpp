@@ -183,17 +183,16 @@ Sample MakeSample(const Cnf& cnf, int core_len, int sample_size, std::vector <st
 	std::random_device rng;
 	std::mt19937 mt(rng());
 	std::uniform_int_distribution<int> rnd_bit(0,1);
+	Minisat22Wrapper solver;
+	solver.InitSolver(cnf);
 	for (int j=0; j<sample_size; ++j){
 		if (!randomMode)
 			assert (initStream[j].size() == core_len);
 		// Create core vector
 		UnitClauseVector coreLits;
-		for (int i=0; i<core_len; ++i)
-			coreLits.push_back((i+1)*(-1+2* (randomMode ?  rnd_bit(mt) : initStream[j][i])));
-		Minisat22Wrapper solver;
-		solver.InitSolver(cnf);
-		solver.AddUCs(coreLits);
-		solver.Solve();
+		for (int i = 0; i < core_len; ++i)
+			coreLits.push_back ((i + 1) * (-1 + 2 * (randomMode ?  rnd_bit(mt) : initStream[j][i])));
+		solver.Solve(coreLits);
 		assert (solver.GetReport().state == SAT);
 		sample.push_back(solver.GetSolution());
 	}
