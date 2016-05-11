@@ -25,10 +25,13 @@ void Minisat22Wrapper::InitSolver(const Cnf& cnf)
 	addProblem(cnf);
 }
 
-void Minisat22Wrapper::Solve()
+void Minisat22Wrapper::Solve(const UnitClauseVector& uc_vector)
 {
-	Minisat::vec <Minisat::Lit> empty_assums;
-	const lbool result = S.solveLimited(empty_assums);
+	Minisat::vec <Minisat::Lit> assums;
+	for (auto uc: uc_vector)
+		assums.push(Minisat::mkLit(var(uc)-1, uc<0));
+	
+	const lbool result = S.solveLimited(assums);
 
 	if (result == l_Undef)
 		state = STOPPED;

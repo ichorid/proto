@@ -12,7 +12,7 @@ public:
 	//Methods
 	void InitSolver(const Cnf& cnf);
 	void AddUCs(const UnitClauseVector& uc_vector);
-	void Solve();
+	void Solve(const UnitClauseVector& uc_vector = UnitClauseVector ());
 	void SetWatchScansLimit(long long unsigned int scans_limit);
 	SolverReport GetReport();
 	UnitClauseVector GetSolution();

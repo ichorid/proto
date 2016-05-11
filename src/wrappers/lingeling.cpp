@@ -38,8 +38,9 @@ void LingelingWrapper::InitSolver(const Cnf& cnf)
 	addProblem(cnf);
 }
 
-void LingelingWrapper::Solve()
+void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 {
+	// TODO: implement assumptions-based solving
 	alarm (scans_limit_);
 	int res = lglsat (lgl_);
 	//FIXME: Dirty workaround for bad signal handling!
