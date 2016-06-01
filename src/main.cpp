@@ -44,7 +44,7 @@ PointStats RiseFallSearch (
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
-			searchEngine.AddPointResults (fitnessFunction, r);
+			searchEngine.AddPointResults (fitnessFunction(r));
 	}
 
 	LOG(INFO) << " STAGE 2 - FALL";
@@ -53,8 +53,14 @@ PointStats RiseFallSearch (
 	{
 		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
+
 		for (const auto &r: results)
-			searchEngine.AddPointResults (fitnessFunction, r);
+		{
+			PointStats ps = fitnessFunction(r);
+			searchEngine.AddPointResults (ps);
+		}
+
+		// Increment stall counter if record was not updated
 		if (searchEngine.GetCurrentRecord ().id == lastRecord.id)
 		{
 			++stallCount;
@@ -65,7 +71,8 @@ PointStats RiseFallSearch (
 			stallCount = 0;
 		}
 	}
-	while(!searchEngine.origin_queue_.empty ()) searchEngine.origin_queue_.pop ();
+	while(!searchEngine.origin_queue_.empty ()) 
+		searchEngine.origin_queue_.pop ();
 	searchEngine.ResetCurrentRecord ();
 
 	return lastRecord;
@@ -96,7 +103,7 @@ void Search 	(
 		auto results = master.EvalPoints(starting_points, guessing_vars, out_mask, sample);
 		for (auto r: results)
 		{
-			searchEngine.AddPointResults(fitnessFunction, r);
+			searchEngine.AddPointResults (fitnessFunction(r));
 			searchEngine.ResetCurrentRecord ();
 		}
 	}
@@ -128,14 +135,15 @@ void Search 	(
 
 			if (lastRecord.sat_total == 0)
 				continue;
+
 			float_t fit = (float_t(1) / pow(2.0, lastRecord.best_incapacity)) / float_t (CountOnes(lastRecord.id));
 			for (size_t i = 0; i < lastRecord.id.size(); ++i)
 				if (lastRecord.id[i] == 1)
 					varsCount[i] += fit;
 			localRecords.push_back (lastRecord);
-			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), 
-					[&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
-			std::valarray <double> tmp = varsCount;
+			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), [&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
+
+			std::valarray <double> tmp  = varsCount;
 			std::valarray <double> tmp2 = std::log10(tmp);
 			LOG(INFO) << "Vars stats: " << Vec2String (tmp2, " ") 
 				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");

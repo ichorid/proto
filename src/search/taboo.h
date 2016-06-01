@@ -38,12 +38,12 @@ public:
 	* \brief Adds point evaluation results to points DB
 	* \param results [in] Point evaluation results, inluding point ID
 	*/
-	void AddPointResults (FitnessFunction fitnessFunction, const PointResults& results);
+	void AddPointResults (const PointStats& ps);
 	
 	/**
 	* \brief Returns current record point from point DB
 	*/
-	PointStats GetCurrentRecord();
+	PointStats GetCurrentRecord ();
 	void ResetCurrentRecord();
 
 	// Priority queue, sorts evaluated points by incapacity record.

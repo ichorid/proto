@@ -3,8 +3,6 @@
 #include <math.h>
 #include <random>
 #include "search/taboo.h"
-#include <iostream>
-#include <iomanip>
 #include <unordered_set>
 #include "easylogging++.h"
 #include <functional>
@@ -46,31 +44,23 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point,
 	return result;
 }
 
-void TabooSearch::AddPointResults (FitnessFunction fitnessFunction, const PointResults& results)
+void TabooSearch::AddPointResults (const PointStats& ps)
 {
-	PointStats* ps = new PointStats; 
-	*ps = fitnessFunction(results);
+	PointStats* psp = new PointStats; 
+	*psp = ps;
 	// and add it to DB and origin candidates queue.
 
-	assert (checked_points_.count(ps->id)==0);
-	checked_points_[ps->id] = ps;
+	assert (checked_points_.count(ps.id)==0);
+	checked_points_[ps.id] = psp;
 
-	if (ps->sat_total < sat_threshold_)
+	if (ps.sat_total < sat_threshold_)
 		return;
-	origin_queue_.push(ps);
+	origin_queue_.push(psp);
 	// Check and update global incapacity record if necessary
-	if (ps->best_incapacity < global_record_->best_incapacity)
+	if (ps.best_incapacity < global_record_->best_incapacity)
 	{
-		global_record_= checked_points_[ps->id]; // New record found !!!
-		LOG(INFO) << " New record found: " 
-			<< std::setw(5) << CountOnes(ps->id) << " "
-			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
-			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
-			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
-			<< std::setw(5) << ps->sat_total << " /" 
-			<< std::setw(5) << results.reps.size() << " " 
-			<< Point2Bitstring(ps->id) << " ccc "
-			<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+		global_record_= checked_points_[ps.id]; // New record found !!!
+		LOG(INFO) << " New record found: " << PrintPointStats(ps);
 	}
 }
 
