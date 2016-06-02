@@ -63,10 +63,10 @@ public:
 	inline PointStats GetPointStats(const PointId& id) { return *checked_points_[id];}
 	std::vector <PointId> Checked (const std::vector<PointId> & vec);
 	std::vector <PointId> Unchecked (const std::vector<PointId> & vec);
-private:
 
 	// Hash table. Contains all evaluated points and their stats
 	PointStatsDB checked_points_;
+private:
 
 	// A point holding the best incapacity record
 	PointStats* global_record_ = NULL;

@@ -86,22 +86,6 @@ PointStats RiseFallSearch (
 			lastCheckedPoints.push_back (ps);
 		}
 
-		// Extract fallen vars stats
-		for (PointStats ps: lastCheckedPoints)
-		{
-			for (PointId peer: searchEngine.Checked (HammingNbhd (ps.id)))
-			{
-				PointStats a = searchEngine.GetPointStats (peer);
-				PointStats b = ps;
-				bool a_smaller_b = CountOnes(a.id) < CountOnes(b.id);
-				bool a_better_b = a.best_incapacity < b.best_incapacity;
-				if (a_smaller_b && a_better_b)
-					fallenEdgesSet.insert (Edge (b.id, a.id));
-				if (!a_smaller_b && !a_better_b)
-					fallenEdgesSet.insert (Edge (a.id, b.id));
-			}
-		}
-
 		// Increment stall counter if record was not updated
 		if (searchEngine.GetCurrentRecord ().id == lastRecord.id)
 		{
@@ -191,6 +175,32 @@ void Search 	(
 				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");
 
 			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord);
+
+			// Extract fallen vars stats
+			for (auto psp: searchEngine.checked_points_)
+			{
+				std::vector <Edge> fallenEdges, stallEdges;
+				auto nbhd = searchEngine.Checked (HammingNbhd (psp.second->id, 0));
+				for (PointId peer: nbhd)
+				{
+					PointStats a = searchEngine.GetPointStats (peer);
+					PointStats b = *psp.second;
+					if (a.best_incapacity > b.best_incapacity)
+						stallEdges.push_back(Edge (b.id, a.id));
+					else
+						fallenEdges.push_back(Edge (b.id, a.id));
+				}
+				// FIXME: magic numbrs to params!
+				// Filter out trivial cases
+				if ((fallenEdges.size() > 0) && (fallenEdges.size() < stallEdges.size()))
+				{
+					for (auto e: fallenEdges)
+						fallenEdgesSet.insert (e);
+				}
+			}
+			if (fallenEdgesSet.size()>0)
+				PrintFallenStats();
+			fallenEdgesSet.clear();
 		}
 
 	}
