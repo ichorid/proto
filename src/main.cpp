@@ -20,13 +20,31 @@ inline std::string IntVector2String(const std::vector <int> &p ) { std::stringst
 
 // FIXME: move this into local object
 std::set <Edge> fallenEdgesSet;
+std::valarray <float_t> stallEdgesCount;
+
+std::valarray <float_t> GetFallenStats (TabooSearch& searchEngine)
+{
+	size_t sz = (*fallenEdgesSet.begin()).first.size();
+	std::valarray <float_t> fallenStats ((1.0/sz), sz);
+	for (auto edge: fallenEdgesSet)
+	{
+		auto fallenMask = BM_xor (edge.first, edge.second);
+		assert (CountOnes(fallenMask) == 1);
+		for (int i = 0; i < fallenMask.size(); ++i)
+			fallenStats[i] += fallenMask[i];
+	}
+	//FIXME Achtung!!!!! Reverse!!!
+	//return ( fallenStats / (stallEdgesCount + fallenStats));
+	return ( (stallEdgesCount + fallenStats) / fallenStats );
+
+}
 
 void PrintFallenStats(TabooSearch& searchEngine)
 {
 	size_t sz = (*fallenEdgesSet.begin()).first.size();
 	std::valarray <float_t> stoicStats (sz);
 	std::valarray <float_t> stoicCount (sz);
-	std::vector <int> fallenStats (sz, 0);
+	std::valarray <float_t> fallenStats (float_t(0), sz);
 	for (auto edge: fallenEdgesSet)
 	{
 		auto fallenMask = BM_xor (edge.first, edge.second);
@@ -44,7 +62,9 @@ void PrintFallenStats(TabooSearch& searchEngine)
 	}
 	std::valarray <float_t> tmp = std::log10(stoicStats);
 	std::valarray <float_t> tmp2 = std::log10(stoicStats/stoicCount);
+	std::valarray <float_t> tmp3 = fallenStats/(stallEdgesCount+fallenStats);
 	LOG(INFO) << " Fallen stats: " << Vec2String (fallenStats, " ");
+	LOG(INFO) << " Fallen rel stats: " << Vec2String (tmp3, " ");
 	LOG(INFO) << " Stoic fit: " << Vec2String (tmp, " ");
 	LOG(INFO) << " Stoic fit avg: " << Vec2String (tmp2, " ");
 	//LOG(INFO) << " Stoic count: " << Vec2String (stoicCount, " ");
@@ -60,7 +80,8 @@ PointStats RiseFallSearch (
 		const std::valarray <size_t> &fixedVars,
 		const int num_points,
 		const int groundLevel,
-		const int stallLimit
+		const int stallLimit,
+		const std::valarray <float_t> weights
 		)
 {
 	PointId basePoint = PointId (guessing_vars.size(), 0);
@@ -76,7 +97,8 @@ PointStats RiseFallSearch (
 	searchEngine.sat_threshold_= 2;
 	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
-		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
+		//auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
+		auto probe_points = searchEngine.GenerateRandomPointsWeighted (i, try_points, weights, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
 			searchEngine.AddPointResults (fitnessFunction(r));
@@ -169,7 +191,10 @@ void Search 	(
 				fixedVars,
 				num_points,
 				groundLevel,
-				stallLimit);
+				stallLimit,
+				((fallenEdgesSet.size()>0) ? GetFallenStats(searchEngine) : 
+				std::valarray <float_t> (1.0, guessing_vars.size()))
+				);
 
 			if (lastRecord.sat_total == 0)
 				continue;
@@ -187,6 +212,8 @@ void Search 	(
 
 			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord);
 
+			// FIXME i'm infinitely ugly!!!1
+			stallEdgesCount.resize(guessing_vars.size(), 0); 
 			// Extract fallen vars stats
 			for (auto psp: searchEngine.checked_points_)
 			{
@@ -196,10 +223,11 @@ void Search 	(
 				{
 					PointStats a = searchEngine.GetPointStats (peer);
 					PointStats b = *psp.second;
+					Edge ba = Edge (b.id, a.id);
 					if (a.best_incapacity > b.best_incapacity)
-						stallEdges.push_back(Edge (b.id, a.id));
+						stallEdges.push_back(ba);
 					else
-						fallenEdges.push_back(Edge (b.id, a.id));
+						fallenEdges.push_back(ba);
 				}
 				// FIXME: magic numbrs to params!
 				// Filter out trivial cases
@@ -208,6 +236,13 @@ void Search 	(
 					//LOG(INFO) << "Fall/stall: " << fallenEdges.size() << " " <<  stallEdges.size();
 					for (auto e: fallenEdges)
 						fallenEdgesSet.insert (e);
+
+					for (auto e: stallEdges)
+					{
+						PointId mask = BM_xor (e.first, e.second);
+						for (size_t i = 0; i < mask.size(); ++i)
+							stallEdgesCount[i] += mask[i];
+					}
 				}
 			}
 			if (fallenEdgesSet.size()>0)

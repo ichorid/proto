@@ -175,6 +175,46 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 	return std::vector <PointId> (candidates.begin(), candidates.end());
 }
 
+std::vector <PointId> TabooSearch::GenerateRandomPointsWeighted (
+		const int num_ones,
+		const int desired_candidates,
+		const std::valarray <float_t> weights,
+		const PointId& basePoint)
+{
+	std::unordered_set <PointId> candidates;
+	while (candidates.size() < desired_candidates)
+	{
+		//FIXME: add safety checks!
+		// Fill the basket with tokens by var probability
+		const int numTokens = basePoint.size();
+		std::vector <Var> basket;
+		for (Var i = 0; i < weights.size(); ++i)
+			for (size_t j = 0; j < 1 + (numTokens * weights[i]); ++j)
+				basket.push_back(i);
+		std::shuffle (basket.begin(), basket.end(), rng); 
+
+		std::unordered_set <Var> pointSet;
+		for (Var i = 0; i < basePoint.size(); ++i)
+			if (basePoint[i] == 1)
+				pointSet.insert(i);
+		while (pointSet.size() < num_ones)
+		{
+			assert (!basket.empty());
+			pointSet.insert (basket.back());
+			basket.pop_back();
+		}
+		PointId point(basePoint.size(), 0);
+		for (Var v: pointSet)
+			point[v] = 1;
+		if (!PointChecked (point))
+				candidates.insert (point);
+	}
+	return std::vector <PointId> (candidates.begin(), candidates.end());
+}
+
+
+
+
 
 /*
 void TabooSearch::ProcessPointResults (const PointId& point, const Results& results)

@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <vector>
 #include <queue>
+#include <valarray>
 #include "common.h"
 
 // Comparator for point incapacity queue. Works via pointers.
@@ -53,6 +54,7 @@ public:
 	int sat_threshold_ = 1;
 	std::vector <PointId> GenerateNewPoints(const int desired_candidates = 1, const PointId& fixedVarsMask = PointId());
 	std::vector <PointId> GenerateRandomPoints(const int num_ones,  const int desired_candidates, const PointId& basePoint);
+	std::vector <PointId> GenerateRandomPointsWeighted(const int num_ones,  const int desired_candidates, const std::valarray <float_t> weights, const PointId& basePoint);
 	void Search(
 		const int     num_iterations,
 	       	const PointId starting_point,
