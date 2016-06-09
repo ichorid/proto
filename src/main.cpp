@@ -44,7 +44,10 @@ PointStats RiseFallSearch (
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
+		{
 			searchEngine.AddPointResults (fitnessFunction, r);
+			searchEngine.ResetCurrentRecord ();
+		}
 	}
 
 	LOG(INFO) << " STAGE 2 - FALL";
