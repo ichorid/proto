@@ -134,7 +134,7 @@ Var Solver::newVar(bool sign, bool dvar)
     //activity .push(0);
     activity .push(rnd_init_act ? drand(random_seed) * 0.00001 : 0);
     seen     .push(0);
-    polarity .push(sign);
+    polarity .push( drand(random_seed) < 0.5);
     decision .push();
     trail    .capacity(v+1);
     setDecisionVar(v, dvar);

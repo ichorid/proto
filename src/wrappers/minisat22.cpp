@@ -1,5 +1,7 @@
 #include "wrappers/minisat22.h"
 #include <iostream>
+#include <random>
+#include <mpi.h>
 
 //TODO: make Lit to MinisatLit function
 
@@ -22,6 +24,8 @@ void Minisat22Wrapper::addProblem(const Cnf& cnf)
 
 void Minisat22Wrapper::InitSolver(const Cnf& cnf)
 {
+	int mpi_rank; MPI_Comm_rank (MPI_COMM_WORLD, &mpi_rank);
+	S.random_seed = (mpi_rank+1);
 	addProblem(cnf);
 }
 

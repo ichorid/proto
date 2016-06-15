@@ -273,6 +273,11 @@ worker_thread:
 	else
 	{
 		auto sample = MakeSample(cnf, core_len, sample_size, extInitStreams);
+
+		// EXP CHANGES !!!
+		for (auto& s: sample)
+			s = sample[0];
+
 		num_vars = sample[0].size();
 
 		for (int i = 0; i < num_vars; ++i)
