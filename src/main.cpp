@@ -17,36 +17,46 @@ MpiBase* mpiS;
 inline std::string IntVector2String(const std::vector <int> &p ) { std::stringstream out; out << std::setw(5); for (const auto& n: p)  out << n << " " ; return out.str();}
 
 
-PointStats RiseFallSearch (
+PointStats Rise(
 		Master& master,
 		TabooSearch& searchEngine,
 		const FitnessFunction& fitnessFunction,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
 	      	const Sample  sample,
-		const std::valarray <size_t> &fixedVars,
 		const int num_points,
 		const int groundLevel,
 		const int stallLimit
 		)
 {
-	PointId basePoint = PointId (guessing_vars.size(), 0);
-	//TODO: switch to valarray as PointID base container
-	for (int i=0; i<fixedVars.size(); ++i)
-		basePoint[fixedVars[i]] = 1; 
-	assert (CountOnes(basePoint) <= groundLevel);
 
 	LOG(INFO) << " STAGE 1 - RISE";
 	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
 	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
-		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
+		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, PointId(guessing_vars.size(),0));
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
 			searchEngine.AddPointResults (fitnessFunction, r);
 	}
+	PointStats lastRecord = searchEngine.GetCurrentRecord ();
+	return lastRecord;
+}
 
+PointStats Fall(
+		Master& master,
+		TabooSearch& searchEngine,
+		const FitnessFunction& fitnessFunction,
+	       	const std::vector <int> guessing_vars,
+	       	const BitMask out_mask,
+	      	const Sample  sample,
+		const PointId basePoint,
+		const int num_points,
+		const int groundLevel,
+		const int stallLimit
+		)
+{
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
 	for (int stallCount=0; !searchEngine.origin_queue_.empty() && (stallCount < stallLimit);)
@@ -65,9 +75,6 @@ PointStats RiseFallSearch (
 			stallCount = 0;
 		}
 	}
-	while(!searchEngine.origin_queue_.empty ()) searchEngine.origin_queue_.pop ();
-	searchEngine.ResetCurrentRecord ();
-
 	return lastRecord;
 }
 
@@ -81,7 +88,7 @@ void Search 	(
 		const int num_iterations,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
-	      	const Sample  sample,
+	      	const Sample sample,
 		const int num_points,
 		const int groundLevel,
 		const int stallLimit,
@@ -105,32 +112,85 @@ void Search 	(
 	std::vector <PointStats> localRecords;
 	for (size_t k = 0; k < groundLevel; k+=varFixStep)
 	{
-		std::valarray <size_t> fixedVars (varsOrder[std::slice(0,k,1)]); // Select k first vars in array
-		std::valarray <char>   fixedVarsMask (guessing_vars.size());
-		fixedVarsMask[fixedVars] = char(1);
-		LOG(INFO) << "Fixed vars: " << Vec2String (std::valarray <size_t> (fixedVars+size_t(1)), " ")
-			  << "Fixed vars mask: " << Vec2String (fixedVarsMask);
+		PointId basePoint = PointId(guessing_vars.size(), 0); // deprecated
 		for (int j = 0; j < num_iterations; ++j)
 		{
-			PointStats lastRecord = RiseFallSearch (
+			Rise(
 				master,
 				searchEngine,
 				fitnessFunction,
 				guessing_vars,
 				out_mask,
 				sample,
-				fixedVars,
 				num_points,
 				groundLevel,
 				stallLimit);
-
+			PointStats lastRecord = Fall(
+				master,
+				searchEngine,
+				fitnessFunction,
+				guessing_vars,
+				out_mask,
+				sample,
+				basePoint,
+				num_points,
+				groundLevel,
+				stallLimit);
+			while(!searchEngine.origin_queue_.empty ()) searchEngine.origin_queue_.pop ();
+			searchEngine.ResetCurrentRecord ();
 			if (lastRecord.sat_total == 0)
 				continue;
+			PointStats *ps = &lastRecord;
+			LOG(INFO) << " Final record: " 
+				<< std::setw(5) << CountOnes(ps->id) << " "
+				<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
+				<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+				<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
+				<< std::setw(5) << ps->sat_total << " /" 
+				<< std::setw(5) << sample.size() << " " 
+				<< Point2Bitstring(ps->id) << " ccc "
+				<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+			std::vector <PointId> hybridPoints;
+			if (localRecords.size() == 0)
+			{
+				localRecords.push_back (lastRecord); // Bootstrap for first run
+				continue;
+			}
+			PointId hybridPoint = BM_or (lastRecord.id, localRecords.back().id);
+			if (searchEngine.PointChecked(hybridPoint))
+				continue;
+			hybridPoints.push_back(hybridPoint);
+			auto results = master.EvalPoints(hybridPoints, guessing_vars, out_mask, sample);
+			for (auto r: results)
+			{
+				searchEngine.AddPointResults(fitnessFunction, r);
+				searchEngine.ResetCurrentRecord ();
+			}
+			LOG(INFO) << " Second Fall!";
+
+
+
+			PointStats lastRecord2 = Fall(
+				master,
+				searchEngine,
+				fitnessFunction,
+				guessing_vars,
+				out_mask,
+				sample,
+				basePoint,
+				num_points,
+				groundLevel,
+				stallLimit);
+			localRecords.push_back (lastRecord2);
+			while(!searchEngine.origin_queue_.empty ()) searchEngine.origin_queue_.pop ();
+			searchEngine.ResetCurrentRecord ();
+			if (lastRecord2.sat_total == 0)
+				continue;
+
 			float_t fit = (float_t(1) / pow(2.0, lastRecord.best_incapacity)) / float_t (CountOnes(lastRecord.id));
 			for (size_t i = 0; i < lastRecord.id.size(); ++i)
 				if (lastRecord.id[i] == 1)
 					varsCount[i] += fit;
-			localRecords.push_back (lastRecord);
 			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), 
 					[&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
 			std::valarray <double> tmp = varsCount;
@@ -140,16 +200,16 @@ void Search 	(
 
 			//FIXME: make db private again, implement this
 			//as a procedure
-		PointStats *ps = &lastRecord;
-		LOG(INFO) << " Final record: " 
-			<< std::setw(5) << CountOnes(ps->id) << " "
-			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
-			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
-			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
-			<< std::setw(5) << ps->sat_total << " /" 
-			<< std::setw(5) << sample.size() << " " 
-			<< Point2Bitstring(ps->id) << " ccc "
-			<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+			PointStats *ps2 = &lastRecord2;
+			LOG(INFO) << " Second fall Final record: " 
+				<< std::setw(5) << CountOnes(ps2->id) << " "
+				<< std::setw(8) << std::setprecision(2) << std::fixed << ps2->best_incapacity << " "    
+				<< std::setw(12) << std::scientific << pow(2.0, ps2->best_incapacity) << " "    
+				<< "W: " << std::setw(8) << std::scientific << ps2->best_cutoff << " "    
+				<< std::setw(5) << ps2->sat_total << " /" 
+				<< std::setw(5) << sample.size() << " " 
+				<< Point2Bitstring(ps2->id) << " ccc "
+				<< Point2Varstring(ps2->id) ; // FIXME: expand vars according to the mask
 		}
 	}
 }

@@ -61,6 +61,7 @@ public:
 	      	const Sample  sample,
 		const int num_points = 1);
 	inline PointStats GetPointStats(const PointId& id) { return *checked_points_[id];}
+	inline bool PointChecked(const PointId& id) const { return checked_points_.count(id) > 0; }
 private:
 
 	// Hash table. Contains all evaluated points and their stats
@@ -75,7 +76,6 @@ private:
 
 	// Service methods
 	std::vector<PointId> GetUncheckedHammingNbhd (const PointId& point, const PointId& fixedVarsMask = PointId());
-	inline bool PointChecked(const PointId& id) const { return checked_points_.count(id) > 0; }
 };
 
 
