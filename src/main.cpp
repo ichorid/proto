@@ -95,8 +95,10 @@ void Search 	(
 		LOG(INFO) << " STARTING POINT CHECK";
 		auto results = master.EvalPoints(starting_points, guessing_vars, out_mask, sample);
 		for (auto r: results)
+		{
 			searchEngine.AddPointResults(fitnessFunction, r);
 			searchEngine.ResetCurrentRecord ();
+		}
 	}
 
 	std::valarray <size_t> varsOrder (guessing_vars.size());
@@ -140,16 +142,16 @@ void Search 	(
 
 			//FIXME: make db private again, implement this
 			//as a procedure
-		PointStats *ps = &lastRecord;
-		LOG(INFO) << " Final record: " 
-			<< std::setw(5) << CountOnes(ps->id) << " "
-			<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
-			<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
-			<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
-			<< std::setw(5) << ps->sat_total << " /" 
-			<< std::setw(5) << sample.size() << " " 
-			<< Point2Bitstring(ps->id) << " ccc "
-			<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+			PointStats *ps = &lastRecord;
+			LOG(INFO) << " Final record: " 
+				<< std::setw(5) << CountOnes(ps->id) << " "
+				<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
+				<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+				<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
+				<< std::setw(5) << ps->sat_total << " /" 
+				<< std::setw(5) << sample.size() << " " 
+				<< Point2Bitstring(ps->id) << " ccc "
+				<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
 		}
 	}
 }
