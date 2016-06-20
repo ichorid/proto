@@ -181,8 +181,11 @@ inline std::string Point2Varstring(const PointId& p) { std::string out; for (int
 //template <typename T> std::string Vec2String(const std::vector <T> & vec) { std::string out; for (T elem: vec) {out+= (std::to_string(elem) + " ");} return out;}
 template <typename T> std::string Vec2String(const T & vec, const char* s = "") { std::string out; for (auto elem: vec) {out+= (std::to_string(elem) + s);} return out;}
 
-inline std::string PrintPointStats(const PointStats& ps)
+inline std::string PrintPointStats(const PointStats& ps, std::vector <int> guessing_vars = std::vector <int> ())
 {
+	if (guessing_vars.size() == 0)
+		for (int i = 0; i < ps.id.size(); ++i)
+			guessing_vars.push_back(i+1);
 	std::ostringstream ss;
 	ss  << std::setw(5) << CountOnes(ps.id) << " "
 	    << std::setw(8) << std::setprecision(2) << std::fixed << ps.best_incapacity << " "    
@@ -190,8 +193,8 @@ inline std::string PrintPointStats(const PointStats& ps)
 	    << "W: " << std::setw(8) << std::scientific << ps.best_cutoff << " "    
 	    << std::setw(5) << ps.sat_total << " /" 
 	    << std::setw(5) << ps.sample_size << " " 
-	    << Point2Bitstring(ps.id) << " ccc "
-	    << Point2Varstring(ps.id) ; // FIXME: expand vars according to the mask
+	    << Point2Bitstring (ps.id) << " ccc "
+	    << Point2Varstring (ExpandBM (ps.id, guessing_vars)) ;
 	return ss.str();
 
 }

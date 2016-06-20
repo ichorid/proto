@@ -7,6 +7,8 @@
 #include "search/taboo.h"
 #include "easylogging++.h"
 #include "tclap/CmdLine.h"
+#include <set>
+#include <utility>
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -54,12 +56,31 @@ PointStats RiseFallSearch (
 		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
 
+		std::vector <PointStats> lastCheckedPoints;
 		for (const auto &r: results)
 		{
-			PointStats ps = fitnessFunction(r);
+			PointStats ps = fitnessFunction (r);
 			searchEngine.AddPointResults (ps);
+			lastCheckedPoints.push_back (ps);
 		}
 
+
+		// Extract vars vice stats
+		std::set <Edge> fallenEdgesSet;
+		for (PointStats ps: lastCheckedPoints)
+		{
+			for (PointId peer: searchEngine.Checked (HammingNbhd (ps.id)))
+			{
+				PointStats a = searchEngine.GetPointStats (peer);
+				PointStats b = ps;
+				bool a_smaller_b = CountOnes(a.id) < CountOnes(b.id);
+				bool a_better_b = a.best_incapacity < b.best_incapacity;
+				if (a_smaller_b && a_better_b)
+					fallenEdgesSet.insert (Edge (b.id, a.id));
+				if (!a_smaller_b && !a_better_b)
+					fallenEdgesSet.insert (Edge (a.id, b.id));
+			}
+		}
 		// Increment stall counter if record was not updated
 		if (searchEngine.GetCurrentRecord ().id == lastRecord.id)
 		{
@@ -102,10 +123,7 @@ void Search 	(
 		LOG(INFO) << " STARTING POINT CHECK";
 		auto results = master.EvalPoints(starting_points, guessing_vars, out_mask, sample);
 		for (auto r: results)
-		{
 			searchEngine.AddPointResults (fitnessFunction(r));
-			searchEngine.ResetCurrentRecord ();
-		}
 	}
 
 	std::valarray <size_t> varsOrder (guessing_vars.size());
@@ -148,9 +166,19 @@ void Search 	(
 			LOG(INFO) << "Vars stats: " << Vec2String (tmp2, " ") 
 				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");
 
-			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord);
+			//FIXME: make db private again, implement this
+			//as a procedure
+			PointStats *ps = &lastRecord;
+			LOG(INFO) << " Final record: " 
+				<< std::setw(5) << CountOnes(ps->id) << " "
+				<< std::setw(8) << std::setprecision(2) << std::fixed << ps->best_incapacity << " "    
+				<< std::setw(12) << std::scientific << pow(2.0, ps->best_incapacity) << " "    
+				<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
+				<< std::setw(5) << ps->sat_total << " /" 
+				<< std::setw(5) << sample.size() << " " 
+				<< Point2Bitstring(ps->id) << " ccc "
+				<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
 		}
-
 	}
 }
 
