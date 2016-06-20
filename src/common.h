@@ -207,8 +207,10 @@ inline std::vector<PointId> HammingNbhd (const PointId& point, const char phase 
 		PointId tmp = point;
 
 		if (tmp[i] != phase)
+		{
 			FlipBit(tmp[i]);
-		result.push_back(tmp);
+			result.push_back(tmp);
+		}
 	}
 	return result;
 }
