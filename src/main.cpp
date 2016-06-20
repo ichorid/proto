@@ -21,21 +21,34 @@ inline std::string IntVector2String(const std::vector <int> &p ) { std::stringst
 // FIXME: move this into local object
 std::set <Edge> fallenEdgesSet;
 
-void PrintFallenStats()
+void PrintFallenStats(TabooSearch& searchEngine)
 {
-	std::vector <int> fallenStats ((*fallenEdgesSet.begin()).first.size(), 0);
+	size_t sz = (*fallenEdgesSet.begin()).first.size();
+	std::valarray <float_t> stoicStats (sz);
+	std::valarray <float_t> stoicCount (sz);
+	std::vector <int> fallenStats (sz, 0);
 	for (auto edge: fallenEdgesSet)
 	{
 		auto fallenMask = BM_xor (edge.first, edge.second);
 		assert (CountOnes(fallenMask) == 1);
 		for (int i = 0; i < fallenMask.size(); ++i)
 			fallenStats[i] += fallenMask[i];
-	}
-	LOG(INFO) << " Fallen stats: " << Vec2String (fallenStats, " ");
-}
 
-			
-				
+		auto stoicMask = edge.second;
+		float_t fit = (float_t(1) / pow(2.0, searchEngine.GetPointStats (stoicMask).best_incapacity) / float_t (CountOnes(stoicMask)));
+		for (int i = 0; i < stoicMask.size(); ++i)
+		{
+			stoicStats[i] += float_t(stoicMask[i]) * fit;
+			stoicCount[i] += stoicMask[i];
+		}
+	}
+	std::valarray <float_t> tmp = std::log10(stoicStats);
+	std::valarray <float_t> tmp2 = std::log10(stoicStats/stoicCount);
+	LOG(INFO) << " Fallen stats: " << Vec2String (fallenStats, " ");
+	LOG(INFO) << " Stoic fit: " << Vec2String (tmp, " ");
+	LOG(INFO) << " Stoic fit avg: " << Vec2String (tmp2, " ");
+	//LOG(INFO) << " Stoic count: " << Vec2String (stoicCount, " ");
+}
 
 PointStats RiseFallSearch (
 		Master& master,
@@ -50,7 +63,6 @@ PointStats RiseFallSearch (
 		const int stallLimit
 		)
 {
-
 	PointId basePoint = PointId (guessing_vars.size(), 0);
 	//TODO: switch to valarray as PointID base container
 	for (int i=0; i<fixedVars.size(); ++i)
@@ -169,9 +181,8 @@ void Search 	(
 			localRecords.push_back (lastRecord);
 			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), [&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
 
-			std::valarray <double> tmp  = varsCount;
-			std::valarray <double> tmp2 = std::log10(tmp);
-			LOG(INFO) << "Vars stats: " << Vec2String (tmp2, " ") 
+			std::valarray <double> tmp = std::log10(varsCount);
+			LOG(INFO) << "Vars stats: " << Vec2String (tmp, " ") 
 				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");
 
 			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord);
@@ -192,14 +203,15 @@ void Search 	(
 				}
 				// FIXME: magic numbrs to params!
 				// Filter out trivial cases
-				if ((fallenEdges.size() > 0) && (fallenEdges.size() < stallEdges.size()))
+				if ((fallenEdges.size() > 0) && (3 * fallenEdges.size() < stallEdges.size()))
 				{
+					//LOG(INFO) << "Fall/stall: " << fallenEdges.size() << " " <<  stallEdges.size();
 					for (auto e: fallenEdges)
 						fallenEdgesSet.insert (e);
 				}
 			}
 			if (fallenEdgesSet.size()>0)
-				PrintFallenStats();
+				PrintFallenStats(searchEngine);
 			fallenEdgesSet.clear();
 		}
 
