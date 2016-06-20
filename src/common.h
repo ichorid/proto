@@ -57,6 +57,8 @@ struct PointStats
 
 typedef PointStats (*FitnessFunction)(const PointResults& results);
 
+typedef std::pair <PointId, PointId> Edge;
+
 inline Var var(Lit l) { return (l >= 0 ? l : (-l));} //inline int var(Lit l) { unsigned int t = l>> 31; l^= t; l+= t & 1; return int(t);}
 inline char FlipBit(char& bit){ return  bit ^= 1;}
 

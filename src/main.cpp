@@ -18,6 +18,24 @@ MpiBase* mpiS;
 
 inline std::string IntVector2String(const std::vector <int> &p ) { std::stringstream out; out << std::setw(5); for (const auto& n: p)  out << n << " " ; return out.str();}
 
+// FIXME: move this into local object
+std::set <Edge> fallenEdgesSet;
+
+void PrintFallenStats()
+{
+	std::vector <int> fallenStats ((*fallenEdgesSet.begin()).first.size(), 0);
+	for (auto edge: fallenEdgesSet)
+	{
+		auto fallenMask = BM_xor (edge.first, edge.second);
+		assert (CountOnes(fallenMask) == 1);
+		for (int i = 0; i < fallenMask.size(); ++i)
+			fallenStats[i] += fallenMask[i];
+	}
+	LOG(INFO) << " Fallen stats: " << Vec2String (fallenStats, " ");
+}
+
+			
+				
 
 PointStats RiseFallSearch (
 		Master& master,
@@ -60,10 +78,28 @@ PointStats RiseFallSearch (
 		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
 
+		std::vector <PointStats> lastCheckedPoints;
 		for (const auto &r: results)
 		{
-			PointStats ps = fitnessFunction(r);
+			PointStats ps = fitnessFunction (r);
 			searchEngine.AddPointResults (ps);
+			lastCheckedPoints.push_back (ps);
+		}
+
+		// Extract fallen vars stats
+		for (PointStats ps: lastCheckedPoints)
+		{
+			for (PointId peer: searchEngine.Checked (HammingNbhd (ps.id)))
+			{
+				PointStats a = searchEngine.GetPointStats (peer);
+				PointStats b = ps;
+				bool a_smaller_b = CountOnes(a.id) < CountOnes(b.id);
+				bool a_better_b = a.best_incapacity < b.best_incapacity;
+				if (a_smaller_b && a_better_b)
+					fallenEdgesSet.insert (Edge (b.id, a.id));
+				if (!a_smaller_b && !a_better_b)
+					fallenEdgesSet.insert (Edge (a.id, b.id));
+			}
 		}
 
 		// Increment stall counter if record was not updated
