@@ -27,19 +27,35 @@ TabooSearch::~TabooSearch()
 		delete point_pair.second;
 }
 
+
+
+std::vector <PointId> TabooSearch::Checked (const std::vector<PointId> & vec)
+{
+	std::vector<PointId> result;
+	for (PointId p: vec)
+		if (PointChecked (p))
+			result.push_back (p);
+	return result;
+}
+
+std::vector <PointId> TabooSearch::Unchecked (const std::vector<PointId> & vec)
+{
+	std::vector<PointId> result;
+	for (PointId p: vec)
+		if (!PointChecked (p))
+			result.push_back (p);
+	return result;
+}
+
+
 std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point, const PointId& fixedVarsMask)
 {
 	std::vector<PointId> result;
-	for (int i = 0; i < point.size(); ++i)
+	for (PointId p: HammingNbhd(point, 0))
 	{
-		PointId tmp = point;
-		//FlipBit(tmp[i]);
-		tmp[i]=0;
-		tmp = BM_or(tmp, fixedVarsMask);
+		PointId tmp = BM_or(p, fixedVarsMask);
 		if (!PointChecked(tmp))
-		{
 			result.push_back(tmp);
-		}
 	}
 	return result;
 }

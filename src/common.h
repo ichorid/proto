@@ -61,7 +61,7 @@ inline Var var(Lit l) { return (l >= 0 ? l : (-l));} //inline int var(Lit l) { u
 inline char FlipBit(char& bit){ return  bit ^= 1;}
 
 // Some common UC manipulation functions
-inline BitMask BM_or(const BitMask& a, const BitMask& b)
+template <typename T> T BM_or(const T& a, const T& b)
 {
 	bool ab = a.size() > b.size();
 	auto out = ab ? a : b;
@@ -70,7 +70,7 @@ inline BitMask BM_or(const BitMask& a, const BitMask& b)
 	return out;
 }
 
-inline BitMask BM_xor(const BitMask& a, const BitMask& b)
+template <typename T> T BM_xor(const T& a, const T& b)
 {
 	bool ab = a.size() > b.size();
 	auto out = ab ? a : b;
@@ -199,4 +199,17 @@ inline std::string PrintPointStats(const PointStats& ps, std::vector <int> guess
 
 }
 
+inline std::vector<PointId> HammingNbhd (const PointId& point, const char phase = 2)
+{
+	std::vector<PointId> result;
+	for (int i = 0; i < point.size(); ++i)
+	{
+		PointId tmp = point;
+
+		if (tmp[i] != phase)
+			FlipBit(tmp[i]);
+		result.push_back(tmp);
+	}
+	return result;
+}
 #endif

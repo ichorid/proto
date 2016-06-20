@@ -7,6 +7,8 @@
 #include "search/taboo.h"
 #include "easylogging++.h"
 #include "tclap/CmdLine.h"
+#include <set>
+#include <utility>
 
 INITIALIZE_EASYLOGGINGPP
 
@@ -30,6 +32,7 @@ PointStats RiseFallSearch (
 		const int stallLimit
 		)
 {
+
 	PointId basePoint = PointId (guessing_vars.size(), 0);
 	//TODO: switch to valarray as PointID base container
 	for (int i=0; i<fixedVars.size(); ++i)
