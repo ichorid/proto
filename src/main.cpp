@@ -150,8 +150,8 @@ void Search 	(
 				<< "W: " << std::setw(8) << std::scientific << ps->best_cutoff << " "    
 				<< std::setw(5) << ps->sat_total << " /" 
 				<< std::setw(5) << sample.size() << " " 
-				<< Point2Bitstring(ps->id) << " ccc "
-				<< Point2Varstring(ps->id) ; // FIXME: expand vars according to the mask
+				<< Point2Bitstring (ExpandBM (ps->id, guessing_vars)) << " ccc "
+				<< Point2Varstring (ExpandBM (ps->id, guessing_vars)) ;
 		}
 	}
 }
