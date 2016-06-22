@@ -33,14 +33,18 @@ static int checkalarm (void * ptr) {
 void LingelingWrapper::InitSolver(const Cnf& cnf)
 {
 	lgl_ = lglinit ();
-	lglseterm (lgl_, checkalarm, &caughtalarm);
-	sig_alrm_handler = signal (SIGALRM, catchalrm);
 	addProblem(cnf);
 }
 
 void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 {
-	// TODO: implement assumptions-based solving
+	// FIXME: lglfreeze all vars
+	//      !!!WARNING!!!
+	// Non-frozen/non-assumed vars become UNUSABLE after call to lglsolve/simp !
+	for (auto lit: uc_vector)
+		lglassume (lgl_, lit);
+	lglseterm (lgl_, checkalarm, &caughtalarm);
+	sig_alrm_handler = signal (SIGALRM, catchalrm);
 	alarm (scans_limit_);
 	int res = lglsat (lgl_);
 	//FIXME: Dirty workaround for bad signal handling!
