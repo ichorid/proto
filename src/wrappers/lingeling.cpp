@@ -45,10 +45,9 @@ void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 		lglassume (lgl_, lit);
 	lglseterm (lgl_, checkalarm, &caughtalarm);
 	sig_alrm_handler = signal (SIGALRM, catchalrm);
-	alarm (scans_limit_);
+	ualarm (scans_limit_, 0); // ualarm uses microseconds, we use milliseconds
 	int res = lglsat (lgl_);
-	//FIXME: Dirty workaround for bad signal handling!
-	if (!caughtalarm) pause();
+	ualarm (0,0);
 	caughtalarm = 0;
 	(void) signal (SIGALRM, sig_alrm_handler);
 	if (res == 10)
@@ -73,7 +72,7 @@ SolverReport LingelingWrapper::GetReport()
 	SolverReport out;
 	out.state = state;
 	//out.watch_scans = lglvisits(lgl_);
-	out.watch_scans = 1+1000*lglsearchtime(lgl_);
+	out.watch_scans = 1+1000000*lglsearchtime(lgl_);
 	return out;
 }
 
