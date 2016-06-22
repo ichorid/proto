@@ -42,6 +42,8 @@ PointStats RiseFallSearch (
 	LOG(INFO) << " STAGE 1 - RISE";
 	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
+	const int satThreshold = searchEngine.sat_threshold_;
+	searchEngine.sat_threshold_= 2;
 	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
@@ -49,6 +51,7 @@ PointStats RiseFallSearch (
 		for (const auto &r: results)
 			searchEngine.AddPointResults (fitnessFunction(r));
 	}
+	searchEngine.sat_threshold_= satThreshold;
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
