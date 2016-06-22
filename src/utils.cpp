@@ -1,7 +1,6 @@
 #include "utils.h"
 #include "wrappers/minisat22.h"
 #include <random>
-#include "easylogging++.h"
 
 void SkipLine(IStream& in)
 {
