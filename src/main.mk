@@ -1,4 +1,4 @@
-MINISAT := minisat22
+MINISAT := minisat_rokk
 TARGET := fhsat
 
 CXX=mpic++
