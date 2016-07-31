@@ -5,12 +5,13 @@ extern "C"
 	#include <signal.h>
 }
 #include <iostream>
+#include <sys/time.h>
 
 static LGL * lgl4sigh;
 static void (*sig_alrm_handler)(int);
 static int caughtalarm = 0;
 static void catchalrm (int sig) {
-  assert (sig == SIGALRM);
+  assert (sig == SIGVTALRM);
   if (!caughtalarm) {
     caughtalarm = 1;
   }
@@ -43,13 +44,23 @@ void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 	// Non-frozen/non-assumed vars become UNUSABLE after call to lglsolve/simp !
 	for (auto lit: uc_vector)
 		lglassume (lgl_, lit);
-	lglseterm (lgl_, checkalarm, &caughtalarm);
-	sig_alrm_handler = signal (SIGALRM, catchalrm);
-	ualarm (scans_limit_, 0); // ualarm uses microseconds, we use milliseconds
-	int res = lglsat (lgl_);
-	ualarm (0,0);
+
+	struct itimerval timer;
+	timer.it_value.tv_sec = scans_limit_/1000000;
+	timer.it_value.tv_usec = 1000 * (scans_limit_%1000000);
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = 0;
+
+	struct sigaction sa;
+	memset (&sa, 0, sizeof (sa));
+	sa.sa_handler = &catchalrm;
+	sigaction (SIGVTALRM, &sa, NULL);
+
 	caughtalarm = 0;
-	(void) signal (SIGALRM, sig_alrm_handler);
+	lglseterm (lgl_, checkalarm, &caughtalarm);
+
+	setitimer (ITIMER_VIRTUAL, &timer, NULL);
+	int res = lglsat (lgl_);
 	if (res == 10)
 		state = SAT;
 	else if (res == 20)
