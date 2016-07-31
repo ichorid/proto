@@ -155,24 +155,39 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 	size_t baseCount0 = CountZeroes(basePoint);
 	size_t baseCount1 = baseSize-baseCount0;
 	assert (num_ones >= baseCount1);
-	while (candidates.size() < desired_candidates)
+	if (num_ones == baseSize)
 	{
-		//FIXME: add safety checks!
-		PointId randomBools;
-		for (size_t i=0; i < baseCount0; ++i)
-			randomBools.push_back(i < (num_ones - baseCount1) ? 1 : 0);
-		std::shuffle(randomBools.begin(), randomBools.end(), rng); 
-
-		PointId point;
-		size_t i=0;
-		for (auto v: basePoint)
-			point.push_back(v ? v : randomBools[i++]);
-
-		if (!PointChecked(point) && candidates.count(point) == 0)
-			candidates.insert(point);
-
+		PointId allOnes (baseSize, 1);
+		if (!PointChecked (allOnes))
+			candidates.insert (allOnes);
 	}
-	return std::vector <PointId> (candidates.begin(), candidates.end());
+	else 	
+	{
+		//FIXME: add BETTER safety checks!
+		int failCount = 10000;
+		while (candidates.size() < desired_candidates)
+		{
+			PointId randomBools;
+			for (size_t i=0; i < baseCount0; ++i)
+				randomBools.push_back (i < (num_ones - baseCount1) ? 1 : 0);
+			std::shuffle (randomBools.begin(), randomBools.end(), rng); 
+
+			PointId point;
+			size_t i=0;
+			for (auto v: basePoint)
+				point.push_back (v ? v : randomBools[i++]);
+
+			if (!PointChecked (point) && candidates.count (point) == 0)
+				candidates.insert (point);
+			else if (failCount-- == 0)
+				break;
+		}
+	}
+	std::vector <PointId> res (candidates.begin(), candidates.end());
+	std::shuffle (res.begin(), res.end(), rng); 
+	if (res.size()>desired_candidates)
+		res.resize(desired_candidates);
+	return res;
 }
 
 
