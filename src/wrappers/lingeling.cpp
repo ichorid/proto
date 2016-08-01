@@ -6,7 +6,12 @@ extern "C"
 }
 #include <iostream>
 #include <sys/time.h>
+#include <ctime>
+static inline double cpuTime(void) {
+    return (double)clock() / CLOCKS_PER_SEC; }
 
+double start_time;
+double time_limit;
 static LGL * lgl4sigh;
 static void (*sig_alrm_handler)(int);
 static int caughtalarm = 0;
@@ -29,6 +34,8 @@ void LingelingWrapper::addProblem(const Cnf& cnf)
 
 static int checkalarm (void * ptr) {
   assert (ptr == (void*) &caughtalarm);
+  if ((cpuTime() - start_time) > time_limit )
+	  caughtalarm = 1;
   return caughtalarm;
 }
 void LingelingWrapper::InitSolver(const Cnf& cnf)
@@ -45,21 +52,12 @@ void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 	for (auto lit: uc_vector)
 		lglassume (lgl_, lit);
 
-	struct itimerval timer;
-	timer.it_value.tv_sec = scans_limit_/1000000;
-	timer.it_value.tv_usec = 1000 * (scans_limit_%1000000);
-	timer.it_interval.tv_sec = 0;
-	timer.it_interval.tv_usec = 0;
-
-	struct sigaction sa;
-	memset (&sa, 0, sizeof (sa));
-	sa.sa_handler = &catchalrm;
-	sigaction (SIGVTALRM, &sa, NULL);
+	start_time = cpuTime();
+	time_limit = double( scans_limit_) / 1000000 ;
 
 	caughtalarm = 0;
 	lglseterm (lgl_, checkalarm, &caughtalarm);
 
-	setitimer (ITIMER_VIRTUAL, &timer, NULL);
 	int res = lglsat (lgl_);
 	if (res == 10)
 		state = SAT;
