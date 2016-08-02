@@ -187,10 +187,9 @@ int main(int argc, char* argv[])
 
 	int core_len;
 	int out_len;
-	int guessing_layer;
 	int groundLevel=0;
+	std::vector <Clause> varGroups;
 	std::vector <int> guessing_vars;
-	std::vector <std::vector <int> > var_layers;
 	std::vector <PointId> starting_points;
 	std::vector <std::vector <char> > extInitStreams;
 	BitMask out_mask;
@@ -209,10 +208,10 @@ int main(int argc, char* argv[])
 		TCLAP::ValueArg<int> num_points_arg	("p", "points","Check this number of points before making next step.", false, 1,"SCAN_POINTS", cmd);
 		TCLAP::ValueArg<int> corelen_arg	("c", "corelen","Num of core vars.", true, 0,"CORE_LEN", cmd);
 		TCLAP::ValueArg<int> outlen_arg		("o", "outlen","Num of out vars.", true, 0,"OUT_LEN", cmd);
-		TCLAP::ValueArg<int> guessing_layer_arg	("l", "layer","Index of var layer to search on.", false, 0,"LAYER", cmd);
 		TCLAP::ValueArg<int> groundLevel_arg	("g", "ground","Starting backdoor size for bottom-up search.", false, 0, "GROUND", cmd);
 		TCLAP::ValueArg<int> stallLimit_arg	("", "stall_limit","Maximum number of failed search attempts before giving up.", false, 123456789, "STALL_LIMIT", cmd);
 		TCLAP::ValueArg<int> varFixStep_arg  ("", "var_step","Fix this number of vars each Rise-Fall iteration.", false, 1, "var_step", cmd);
+		TCLAP::ValueArg <std::string> varGroupsFilename_arg ("", "vargroups","Var groups filename (guessing vars derived from var groups).", false, "","VGRPFILENAME", cmd);
 		TCLAP::ValueArg <std::string> startingPointsFilename_arg ("", "starting_points","Starting points list filename", false, "","STPFILENAME", cmd);
 		TCLAP::ValueArg <std::string> knownVarsFilename_arg ("", "known_vars","Known vars filename.", false, "","KNVFILENAME", cmd);
 		TCLAP::ValueArg <std::string> extInitStreamsFilename_arg ("", "streams_file","External init streams (core vars values) filename", false, "","ISFILENAME", cmd);
@@ -227,28 +226,35 @@ int main(int argc, char* argv[])
 		sat_threshold = sat_threshold_arg.getValue() ;
 		core_len = corelen_arg.getValue();
 		out_len = outlen_arg.getValue();
-		guessing_layer = guessing_layer_arg.getValue();
 		num_points = num_points_arg.getValue();
 		modeUnsat = modeUnsat_arg.getValue();
 		groundLevel = groundLevel_arg.getValue();
 		stallLimit = stallLimit_arg.getValue();
 		varFixStep = varFixStep_arg.getValue();
 		solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
-		ReadCnfFile(filename_arg.getValue().c_str(), cnf, var_layers);
+		ReadCnfFile(filename_arg.getValue().c_str(), cnf);
 
 		// Initialize worker processes
 		if (mpi_rank > 0)
 			goto worker_thread;
-		if (var_layers.size() == 0)
+
+		if (varGroupsFilename_arg.isSet())
 		{
-			LOG(INFO) << " No variable layers data found in CNF file. Will solve on core variables.";
-			for (int i = 0; i < core_len; ++i)
-				guessing_vars.push_back (i + 1);
+			varGroups = ReadVarGroupsFile (varGroupsFilename_arg.getValue().c_str());
+			// Derive guessing vars set by concatenating var groups file
+			for (auto g: varGroups)
+				guessing_vars.insert(guessing_vars.end(), g.begin(), g.end());
+			std::sort (guessing_vars.begin(), guessing_vars.end());
+			// Raise error if duplicates found
+			// TODO: better error checking
+			for (int i = 1; i < guessing_vars.size(); ++i)
+				assert(guessing_vars[i] != guessing_vars[i-1]);
 		}
 		else
 		{
-			assert(guessing_layer < var_layers.size());
-			guessing_vars = var_layers[guessing_layer];
+			LOG(INFO) << "No var groups / guessing vars file provided. Will solve on core variables.";
+			for (int i = 0; i < core_len; ++i)
+				guessing_vars.push_back (i + 1);
 		}
 
 		if (startingPointsFilename_arg.isSet())

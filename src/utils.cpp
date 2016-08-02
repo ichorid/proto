@@ -61,7 +61,7 @@ std::vector <char> ReadBitString(IStream& in)
 }
 
 
-void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_layers )
+void ReadCNF(IStream& in, Cnf& cnf)
 {
 	for(;;){
 		SkipWhitespace(in);
@@ -69,29 +69,16 @@ void ReadCNF(IStream& in, Cnf& cnf, std::vector < std::vector <int> > & var_laye
 		else if((*in == 'p') && Match(in, "p cnf")){
 			SkipLine(in);
 		}else if(*in == 'c'){
-			if (Match(in, "c begin_layers_list")){
-				SkipLine(in);
-				//std::cout<< std::endl << "LAYERS BEGIN";
-				while (false==Match(in, "c end_layers_list")){
-					//std::cout<< std::endl << "LAYER";
-					Clause layer;
-					//++in; // skip 'c'
-					ReadClause(in, layer);
-					var_layers.push_back(layer);
-					SkipLine(in);
-				}
-			}
 			SkipLine(in);
 		}else{
 			Clause cla;
 			ReadClause(in, cla);
 			cnf.push_back(cla);
 		}
-
 	}
 }
 
-void ReadCnfFile(const char* file_name, Cnf& cnf, std::vector <std::vector<int> > & var_layers )
+void ReadCnfFile(const char* file_name, Cnf& cnf)
 {
 	std::ifstream file(file_name, std::ios::in);
 
@@ -100,14 +87,8 @@ void ReadCnfFile(const char* file_name, Cnf& cnf, std::vector <std::vector<int> 
 		exit(1);
 	}
 	IStream in(file);
-	ReadCNF(in, cnf, var_layers);
+	ReadCNF(in, cnf);
 	file.close();
-}
-
-void ReadCnfFile(const char* file_name, Cnf& cnf ) 
-{ 
-	std::vector < std::vector <int> > dummy_layers; 
-	ReadCnfFile(file_name, cnf, dummy_layers); 
 }
 
 std::vector <PointId> ReadPointsFile(const char* file_name,  const std::vector <int>& guessing_vars)
@@ -116,22 +97,20 @@ std::vector <PointId> ReadPointsFile(const char* file_name,  const std::vector <
 	std::vector <Clause> tmp;
 	std::vector <PointId> out;
 	if(!file.is_open()){
-		std::cout << "File " << file_name << " not found!" << std::endl;
+		std::cout << "file " << file_name << " not found!" << std::endl;
 		exit(1);
 	}
 	IStream in(file);
 	for(;;){
 		SkipWhitespace(in);
-		if(in.eof()) break;
-		else if((*in == 'p') && Match(in, "p cnf")){
-			SkipLine(in);
-		}else if(*in == 'c'){
-			SkipLine(in);
-		}else{
+		if(in.eof()) 
+			break;
+		else
+		{
 			Clause cla;
 			ReadClause(in, cla);
-			//TODO: make work in broken cases. Use std algorithms, etc.
-			// We assume both vectors are pre-sorted
+			//todo: make work in broken cases. use std algorithms, etc.
+			// we assume both vectors to be pre-sorted
 			int i = 0;
 			PointId point;
 			std::sort(cla.begin(), cla.end());
@@ -152,6 +131,35 @@ std::vector <PointId> ReadPointsFile(const char* file_name,  const std::vector <
 			out.push_back(point);
 		}
 
+	}
+	file.close();
+	return out;
+}
+
+std::vector <Clause> ReadVarGroupsFile (const char* file_name)
+{
+	std::vector <Clause> out;
+	std::ifstream file(file_name, std::ios::in);
+	if(!file.is_open()){
+		std::cout << "file " << file_name << " not found!" << std::endl;
+		exit(1);
+	}
+	IStream in(file);
+	for(;;){
+		SkipWhitespace(in);
+		if(in.eof()) 
+			break;
+		else
+		{
+			Clause cla;
+			ReadClause(in, cla);
+			//todo: make work in broken cases. use std algorithms, etc.
+			// we assume both vectors are pre-sorted
+			std::sort(cla.begin(), cla.end());
+			for (auto v: cla)
+				assert (v > 0 );
+			out.push_back(cla);
+		}
 	}
 	file.close();
 	return out;
