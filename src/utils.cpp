@@ -109,26 +109,7 @@ std::vector <PointId> ReadPointsFile(const char* file_name,  const std::vector <
 		{
 			Clause cla;
 			ReadClause(in, cla);
-			//todo: make work in broken cases. use std algorithms, etc.
-			// we assume both vectors to be pre-sorted
-			int i = 0;
-			PointId point;
-			std::sort(cla.begin(), cla.end());
-			for (auto v: cla)
-			{
-				while (v != guessing_vars[i++])
-				{
-					point.push_back(0);
-					assert(i < guessing_vars.size());
-				}
-				point.push_back(1);
-			}
-
-			while (i++ < guessing_vars.size())
-				point.push_back(0);
-
-			assert (point.size()==guessing_vars.size());
-			out.push_back(point);
+			out.push_back (Ints2Point (cla, guessing_vars));
 		}
 
 	}

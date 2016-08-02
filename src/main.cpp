@@ -189,6 +189,7 @@ int main(int argc, char* argv[])
 	int out_len;
 	int groundLevel=0;
 	std::vector <Clause> varGroups;
+	std::vector <PointId> varGroupsMasks;
 	std::vector <int> guessing_vars;
 	std::vector <PointId> starting_points;
 	std::vector <std::vector <char> > extInitStreams;
@@ -249,6 +250,8 @@ int main(int argc, char* argv[])
 			// TODO: better error checking
 			for (int i = 1; i < guessing_vars.size(); ++i)
 				assert(guessing_vars[i] != guessing_vars[i-1]);
+			for (auto g: varGroups)
+				varGroupsMasks.push_back (Ints2Point (g, guessing_vars));
 		}
 		else
 		{
