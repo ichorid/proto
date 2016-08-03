@@ -91,6 +91,7 @@ void Search 	(
 		Master master,
 		TabooSearch searchEngine,
 		const FitnessFunction fitnessFunction,
+		const std::vector <PointId> varGroupsMasks,
 		const int num_iterations,
 	       	const std::vector <int> guessing_vars,
 	       	const BitMask out_mask,
@@ -103,6 +104,8 @@ void Search 	(
 		)
 {
 
+	for (auto vec: varGroupsMasks)
+		searchEngine.varPalette_.insert(vec);
 	if (starting_points.size() > 0)
 	{
 		LOG(INFO) << " STARTING POINT CHECK";
@@ -313,6 +316,7 @@ worker_thread:
 		Search (Master(mpi_size),
 			TabooSearch(sat_threshold),
 			(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction),
+			varGroupsMasks,
 			num_iterations,
 			guessing_vars,
 			out_mask,
