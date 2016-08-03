@@ -216,11 +216,18 @@ inline std::vector<PointId> HammingNbhd (const PointId& point, const char phase 
 }
 
 
-inline PointId Ints2Point (const std::vector <int>& ints, const std::vector <int>& guessing_vars)
+inline PointId Ints2Point (std::vector <int>& ints, const std::vector <int>& guessing_vars)
 {
 	PointId point (guessing_vars.size(), 0);
-	for (auto i: ints)
-		point[i]=1;
+	std::sort (ints.begin(), ints.end());
+	int i = 0;
+	for (auto v: ints)
+	{
+		while (v != guessing_vars[i])
+			i++;
+		point[i] = 1;
+	}
+
 	return point;
 }
 #endif
