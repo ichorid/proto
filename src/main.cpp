@@ -44,17 +44,24 @@ PointStats RiseFallSearch (
 	const int try_points = 10;
 	const int satThreshold = searchEngine.sat_threshold_;
 	searchEngine.sat_threshold_= 2;
+	PointStats lastRecord;
 	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
 		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
 		for (const auto &r: results)
+		{
 			searchEngine.AddPointResults (fitnessFunction(r));
+			if (searchEngine.GetCurrentRecord ().id != lastRecord.id)
+			{
+				lastRecord = searchEngine.GetCurrentRecord ();
+				LOG(INFO) << " New record found: " << PrintPointStats (lastRecord, guessing_vars);
+			}
+		}
 	}
 	searchEngine.sat_threshold_= satThreshold;
 
 	LOG(INFO) << " STAGE 2 - FALL";
-	PointStats lastRecord;
 	for (int stallCount=0; !searchEngine.origin_queue_.empty() && (stallCount < stallLimit);)
 	{
 		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
@@ -67,14 +74,15 @@ PointStats RiseFallSearch (
 		}
 
 		// Increment stall counter if record was not updated
-		if (searchEngine.GetCurrentRecord ().id == lastRecord.id)
-		{
-			++stallCount;
-		}
-		else
+		if (searchEngine.GetCurrentRecord ().id != lastRecord.id)
 		{
 			lastRecord = searchEngine.GetCurrentRecord ();
 			stallCount = 0;
+			LOG(INFO) << " New record found: " << PrintPointStats (lastRecord, guessing_vars);
+		}
+		else
+		{
+			++stallCount;
 		}
 	}
 	while(!searchEngine.origin_queue_.empty ()) 
@@ -157,7 +165,7 @@ void Search 	(
 			LOG(INFO) << "Vars stats: " << Vec2String (tmp2, " ") 
 				  << "Vars prio: "  << Vec2String (std::valarray <size_t> (varsOrder+size_t(1)), " ");
 
-			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord);
+			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord, guessing_vars);
 		}
 
 	}

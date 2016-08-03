@@ -89,10 +89,7 @@ void TabooSearch::AddPointResults (const PointStats& ps)
 	origin_queue_.push(psp);
 	// Check and update global incapacity record if necessary
 	if (ps.best_incapacity < global_record_->best_incapacity)
-	{
 		global_record_= checked_points_[ps.id]; // New record found !!!
-		LOG(INFO) << " New record found: " << PrintPointStats(ps);
-	}
 }
 
 std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates, const PointId& fixedVarsMask)
