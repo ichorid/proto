@@ -20,115 +20,46 @@ inline std::string IntVector2String(const std::vector <int> &p ) { std::stringst
 
 
 PointStats RiseFallSearch (
-		Master& master,
+		Evaluator& eval,
 		TabooSearch& searchEngine,
-		const FitnessFunction& fitnessFunction,
-	       	const std::vector <int> guessing_vars,
-	       	const BitMask out_mask,
-	      	const Sample  sample,
-		const std::valarray <size_t> &fixedVars,
 		const int num_points,
 		const int groundLevel,
-		const int stallLimit
-		)
+		const int stallLimit,
+		PointId basePoint = PointId (eval.guessingVars.size(), 0))
 {
-
-	PointId basePoint = PointId (guessing_vars.size(), 0);
-	//TODO: switch to valarray as PointID base container
-	for (int i=0; i<fixedVars.size(); ++i)
-		basePoint[fixedVars[i]] = 1; 
 	assert (CountOnes(basePoint) <= groundLevel);
-
 	LOG(INFO) << " STAGE 1 - RISE";
-	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
-	const int try_points = 10;
-	const int satThreshold = searchEngine.sat_threshold_;
-	searchEngine.sat_threshold_= 2;
-	PointStats lastRecord;
-	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
-	{
-		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
-		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
-		for (const auto &r: results)
-		{
-			searchEngine.AddPointResults (fitnessFunction(r));
-			if (searchEngine.GetCurrentRecord ().id != lastRecord.id)
-			{
-				lastRecord = searchEngine.GetCurrentRecord ();
-				LOG(INFO) << " New record found: " << PrintPointStats (lastRecord, guessing_vars);
-			}
-		}
-	}
-	searchEngine.sat_threshold_= satThreshold;
+	for (int i = groundLevel; (searchEngine.origin_queue_.empty() && (i <= eval.guessingVars.size())); ++i)
+		for (Results r: eval (searchEngine.GenerateRandomPoints (i, 10 /* num points */, basePoint)))
+			searchEngine.AddPointResults (r, 2 /* Sat threshold */);
 
 	LOG(INFO) << " STAGE 2 - FALL";
-	for (int stallCount=0; !searchEngine.origin_queue_.empty() && (stallCount < stallLimit);)
-	{
-		auto probe_points = searchEngine.GenerateNewPoints (num_points, basePoint); 
-		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
+	PointStats lastRecord;
+	for (int stallCount = 0; (!searchEngine.origin_queue_.empty() && (stallCount < stallLimit)); ++stallCount)
+		for (Results r: eval (searchEngine.GenerateNewPoints (num_points, basePoint)))
+			if (searchEngine.AddPointResults (r).id == eval.record.id)
+			{
+				stallCount = 0;
+				lastRecord = eval.record;
+			}
 
-		for (const auto &r: results)
-		{
-			PointStats ps = fitnessFunction(r);
-			searchEngine.AddPointResults (ps);
-		}
-
-		// Increment stall counter if record was not updated
-		if (searchEngine.GetCurrentRecord ().id != lastRecord.id)
-		{
-			lastRecord = searchEngine.GetCurrentRecord ();
-			stallCount = 0;
-			LOG(INFO) << " New record found: " << PrintPointStats (lastRecord, guessing_vars);
-		}
-		else
-		{
-			++stallCount;
-		}
-	}
 	while(!searchEngine.origin_queue_.empty ()) 
 		searchEngine.origin_queue_.pop ();
-	searchEngine.ResetCurrentRecord ();
+	eval.ResetCurrentRecord ();
 
 	return lastRecord;
 }
 
-
-
-
-void Search 	(
-		Master master,
-		TabooSearch searchEngine,
-		const FitnessFunction fitnessFunction,
-		const std::vector <PointId> varGroupsMasks,
+void Search (
+	       	RiseFallSearch& riseFall,
 		const int num_iterations,
-	       	const std::vector <int> guessing_vars,
-	       	const BitMask out_mask,
-	      	const Sample  sample,
-		const int num_points,
 		const int groundLevel,
-		const int stallLimit,
-		const size_t varFixStep,
-		const std::vector <PointId> starting_points = std::vector <PointId> ()
-		)
+		const size_t varFixStep)
 {
-
-	for (auto vec: varGroupsMasks)
-		searchEngine.varPalette_.insert(vec);
-	if (starting_points.size() > 0)
-	{
-		LOG(INFO) << " STARTING POINT CHECK";
-		auto results = master.EvalPoints(starting_points, guessing_vars, out_mask, sample);
-		for (auto r: results)
-		{
-			searchEngine.AddPointResults (fitnessFunction(r));
-			searchEngine.ResetCurrentRecord ();
-		}
-	}
 
 	std::valarray <size_t> varsOrder (guessing_vars.size());
 	std::iota (std::begin(varsOrder), std::end(varsOrder), 0);
 	std::valarray <double> varsCount (guessing_vars.size());
-	std::vector <PointStats> localRecords;
 	for (size_t k = 0; k < groundLevel; k+=varFixStep)
 	{
 		std::valarray <size_t> fixedVars (varsOrder[std::slice(0,k,1)]); // Select k first vars in array
@@ -136,20 +67,13 @@ void Search 	(
 		fixedVarsMask[fixedVars] = char(1);
 		LOG(INFO) << "Fixed vars: " << Vec2String (std::valarray <size_t> (fixedVars+size_t(1)), " ")
 			  << "Fixed vars mask: " << Vec2String (fixedVarsMask);
+
 		for (int j = 0; j < num_iterations; ++j)
 		{
-			PointStats lastRecord = RiseFallSearch (
-				master,
-				searchEngine,
-				fitnessFunction,
-				guessing_vars,
-				out_mask,
-				sample,
-				fixedVars,
-				num_points,
-				groundLevel,
-				stallLimit);
-
+			//TODO: switch to valarray as PointID base container
+			for (int i=0; i<fixedVars.size(); ++i)
+				basePoint[fixedVars[i]] = 1; 
+			PointStats lastRecord = RiseFallSearch (fixedVars, groundLevel);
 			if (lastRecord.sat_total == 0)
 				continue;
 
@@ -157,7 +81,6 @@ void Search 	(
 			for (size_t i = 0; i < lastRecord.id.size(); ++i)
 				if (lastRecord.id[i] == 1)
 					varsCount[i] += fit;
-			localRecords.push_back (lastRecord);
 			std::stable_sort (std::begin(varsOrder), std::end(varsOrder), [&varsCount](size_t a, size_t b) { return varsCount[a] > varsCount[b];});
 
 			std::valarray <double> tmp  = varsCount;
@@ -167,11 +90,10 @@ void Search 	(
 
 			LOG(INFO) << " Final record: " << PrintPointStats(lastRecord, guessing_vars);
 		}
-
 	}
 }
 
-int main(int argc, char* argv[])
+int main (int argc, char* argv[])
 {
 	// Configure EasyLogger++
 	el::Configurations defaultConf;
@@ -233,6 +155,17 @@ int main(int argc, char* argv[])
 		cmd.parse(argc, argv);
 
 		scans_limit = scans_limit_arg.getValue();
+		solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
+		ReadCnfFile(filename_arg.getValue().c_str(), cnf);
+		//TODO: init workers through MPI 
+		// Initialize worker processes
+		if (mpi_rank > 0)
+		{
+			Worker worker(cnf, scans_limit, 0, solverType);
+			worker.MainJobCycle();
+			return 0;
+		}
+
 		sample_size = sample_size_arg.getValue();
 		num_iterations = num_iterations_arg.getValue() ;
 		sat_threshold = sat_threshold_arg.getValue() ;
@@ -243,12 +176,6 @@ int main(int argc, char* argv[])
 		groundLevel = groundLevel_arg.getValue();
 		stallLimit = stallLimit_arg.getValue();
 		varFixStep = varFixStep_arg.getValue();
-		solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
-		ReadCnfFile(filename_arg.getValue().c_str(), cnf);
-
-		// Initialize worker processes
-		if (mpi_rank > 0)
-			goto worker_thread;
 
 		if (varGroupsFilename_arg.isSet())
 		{
@@ -290,51 +217,54 @@ int main(int argc, char* argv[])
 	catch (TCLAP::ArgException &e)
 		{std::cerr << "error: " << e.error() << " for arg " << e.argId() << std::endl;}
 
-worker_thread:
-	if (mpi_rank > 0)
-	{
-		Worker worker(cnf, scans_limit, 0, solverType);
-		worker.MainJobCycle();
-	}
-	else
-	{
-		auto sample = MakeSample(cnf, core_len, sample_size, extInitStreams);
-		num_vars = sample[0].size();
+	auto sample = MakeSample(cnf, core_len, sample_size, extInitStreams);
+	num_vars = sample[0].size();
 
-		for (int i = 0; i < num_vars; ++i)
-			out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
-		// Remove known vars from guessing vars
-		if (!knownVars.empty())
-		{
-			guessing_vars = RemoveIntsFromVectorByBitMask (guessing_vars, knownVars); 
-			out_mask = BM_or(out_mask, knownVars);
-		}
-		assert(out_mask.size() == sample[0].size());
-		// UNSAT mode option - make wrong UC assumptions for sample units
-		if (modeUnsat)
-		{
-			std::random_device rng;
-			std::mt19937 mt(rng());
-			std::uniform_int_distribution <int> rnd_bit (0,1);
-			for (auto &unit: sample)
-				for (int i = 0; i < (num_vars - out_len); ++i)
-					if (rnd_bit(mt))
-						unit[i] *= -1;
-		}
-		Search (Master(mpi_size),
-			TabooSearch(sat_threshold),
-			(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction),
-			varGroupsMasks,
-			num_iterations,
-			guessing_vars,
-			out_mask,
-			sample,
-			num_points,
-			groundLevel,
-			stallLimit,
-			varFixStep,
-			starting_points);
+	for (int i = 0; i < num_vars; ++i)
+		out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
+	// Remove known vars from guessing vars
+	if (!knownVars.empty())
+	{
+		guessing_vars = RemoveIntsFromVectorByBitMask (guessing_vars, knownVars); 
+		out_mask = BM_or(out_mask, knownVars);
 	}
+	assert(out_mask.size() == sample[0].size());
+	// UNSAT mode option - make wrong UC assumptions for sample units
+	if (modeUnsat)
+	{
+		std::random_device rng;
+		std::mt19937 mt(rng());
+		std::uniform_int_distribution <int> rnd_bit (0,1);
+		for (auto &unit: sample)
+			for (int i = 0; i < (num_vars - out_len); ++i)
+				if (rnd_bit(mt))
+					unit[i] *= -1;
+	}
+
+	if (starting_points.size() > 0)
+	{
+		LOG(INFO) << " STARTING POINT CHECK";
+		for (auto r: eval(starting_points)
+			searchEngine.AddPointResults (r);
+	}
+
+	TabooSearch taboo (sat_threshold);
+	for (auto vec: varGroupsMasks)
+		taboo.varPalette_.insert(vec);
+
+	Search (
+		RiseFallSearch (
+			Evaluator (
+				Master (mpi_size), 
+				sample, 
+				guessing_vars,
+				(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction)),
+			taboo,
+			numPoints,
+			stallLimit),
+		num_iterations,
+		groundLevel,
+		varFixStep);
 
 	return 0;
 }
