@@ -7,6 +7,8 @@
 #include <queue>
 #include "common.h"
 
+#define SAT_THRESH 2
+
 // Comparator for point incapacity queue. Works via pointers.
 class ComparePointIncapacity
 {
@@ -19,10 +21,18 @@ public:
 
 	bool operator() (const PointStats* lhs, const PointStats* rhs) const
 	{
+		bool lhsGood = lhs->sat_total >= SAT_THRESH;
+		bool rhsGood = rhs->sat_total >= SAT_THRESH;
+		if (( lhsGood && rhsGood) || (!lhsGood && !rhsGood))
+			if (reverse) 
+				return (lhs->best_incapacity < rhs->best_incapacity);
+			else
+				return (lhs->best_incapacity > rhs->best_incapacity);
+
 		if (reverse) 
-			return (lhs->best_incapacity < rhs->best_incapacity);
+			return (lhsGood);
 		else
-			return (lhs->best_incapacity > rhs->best_incapacity);
+			return (rhsGood);
 	}
 };
 typedef std::priority_queue <PointStats*, std::vector <PointStats*>, ComparePointIncapacity> BestIncapacityQueue;

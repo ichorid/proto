@@ -84,8 +84,6 @@ void TabooSearch::AddPointResults (const PointStats& ps)
 	assert (checked_points_.count(ps.id)==0);
 	checked_points_[ps.id] = psp;
 
-	if (ps.sat_total < sat_threshold_)
-		return;
 	origin_queue_.push(psp);
 	// Check and update global incapacity record if necessary
 	if (ps.best_incapacity < global_record_->best_incapacity)
