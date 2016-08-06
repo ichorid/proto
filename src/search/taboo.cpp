@@ -65,7 +65,7 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point,
 std::vector<PointId> TabooSearch::GetUncheckedPaletteNbhd (const PointId& point, const PointId& fixedVarsMask)
 {
 	std::vector <PointId> result;
-	for (PointId p: PaletteNbhd (varPalette_, point, 0))
+	for (PointId p: PaletteNbhd (varPalette_, point, 2))
 	{
 		PointId tmp = BM_or (p, fixedVarsMask);
 		if (!PointChecked (tmp))

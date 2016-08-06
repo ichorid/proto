@@ -14,7 +14,6 @@ INITIALIZE_EASYLOGGINGPP
 
 MpiBase* mpiS;
 
-#define TINY_SAMPLE_SIZE 10
 
 inline std::string IntVector2String(const std::vector <int> &p ) { std::stringstream out; out << std::setw(5); for (const auto& n: p)  out << n << " " ; return out.str();}
 
@@ -40,15 +39,15 @@ PointStats RiseFallSearch (
 	assert (CountOnes(basePoint) <= groundLevel);
 
 	LOG(INFO) << " STAGE 1 - RISE";
-	Sample sample_tiny (sample.begin (), sample.begin () + TINY_SAMPLE_SIZE);
 	const int try_points = 10;
 	const int satThreshold = searchEngine.sat_threshold_;
 	searchEngine.sat_threshold_= 2;
 	PointStats lastRecord;
-	for (int i = groundLevel; i <= guessing_vars.size () && searchEngine.origin_queue_.empty(); ++i)
+	if ((searchEngine.origin_queue_.empty()))
+	for (int i = groundLevel; i <= guessing_vars.size () && (lastRecord.sat_total < 2); ++i)
 	{
 		auto probe_points = searchEngine.GenerateRandomPoints (i, try_points, basePoint);
-		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample_tiny);
+		auto results = master.EvalPoints (probe_points, guessing_vars, out_mask, sample);
 		for (const auto &r: results)
 		{
 			searchEngine.AddPointResults (fitnessFunction(r));
