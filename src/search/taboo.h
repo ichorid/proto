@@ -39,7 +39,7 @@ public:
 	* \brief Adds point evaluation results to points DB
 	* \param results [in] Point evaluation results, inluding point ID
 	*/
-	void AddPointResults (const PointStats& ps);
+	PointStats* AddPointResults (const PointStats& ps, int size_thresh_tmp = 0);
 	
 	/**
 	* \brief Returns current record point from point DB

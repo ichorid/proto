@@ -75,7 +75,7 @@ std::vector<PointId> TabooSearch::GetUncheckedPaletteNbhd (const PointId& point,
 }
 
 
-void TabooSearch::AddPointResults (const PointStats& ps)
+PointStats* TabooSearch::AddPointResults (const PointStats& ps, int sat_tresh_tmp)
 {
 	PointStats* psp = new PointStats; 
 	*psp = ps;
@@ -84,12 +84,14 @@ void TabooSearch::AddPointResults (const PointStats& ps)
 	assert (checked_points_.count(ps.id)==0);
 	checked_points_[ps.id] = psp;
 
-	if (ps.sat_total < sat_threshold_)
-		return;
-	origin_queue_.push(psp);
-	// Check and update global incapacity record if necessary
-	if (ps.best_incapacity < global_record_->best_incapacity)
-		global_record_= checked_points_[ps.id]; // New record found !!!
+	if (ps.sat_total >= (sat_tresh_tmp>0 ? sat_tresh_tmp : sat_threshold_))
+	{
+		origin_queue_.push(psp);
+		// Check and update global incapacity record if necessary
+		if (ps.best_incapacity < global_record_->best_incapacity)
+			global_record_= checked_points_[ps.id]; // New record found !!!
+	}
+	return psp;
 }
 
 std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates, const PointId& fixedVarsMask)

@@ -1,14 +1,44 @@
 #include "common.h"
+#include "peer.h"
 
 PointStats IncapacityFitnessFunction(const PointResults& results);
 PointStats TotalSolvedFitnessFunction(const PointResults& results);
 
 class Evaluator
 {
+private:
+	Master& master;
+	FitnessFunction fitFunc;
+	BitMask out_mask;
 public:
-	Evaluator (Master& master, Sample& sample, std::vector <int> guessingVars, FitnessFunction fitFunc); 
-if (lastRecord.id != rec.id)
+	std::vector <int> guessing_vars;
+	PointStats record;
+	Sample& sample;
+	std::vector <PointStats> operator()(const std::vector <PointId> &task);
+	void ResetCurrentRecord() {record = PointStats();};
+	Evaluator (
+		Master& m,
+		Sample& s,
+		std::vector <int> g,
+		BitMask o,
+		FitnessFunction f):
+		master(m), sample(s), guessing_vars(g), out_mask(o), fitFunc(f) {}
+
+};
+
+std::vector <PointStats> Evaluator::operator()(const std::vector <PointId> &task)
 {
-	lastRecord = rec;
-	LOG(INFO) << " New record found: " << PrintPointStats (rec, eval.guessingVars);
+	std::vector <PointStats> out;
+	for (auto ps: master.EvalPoints(task, guessing_vars, out_mask, sample))
+		out.push_back (fitFunc (ps));
+	/*
+	if (lastRecord.id != rec.id)
+	{
+		lastRecord = rec;
+		LOG(INFO) << " New record found: " << PrintPointStats (rec, eval.guessingVars);
+	}
+	*/
+	return std::move(out);
 }
+
+

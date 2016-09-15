@@ -19,39 +19,9 @@ MpiBase* mpiS;
 inline std::string IntVector2String(const std::vector <int> &p ) { std::stringstream out; out << std::setw(5); for (const auto& n: p)  out << n << " " ; return out.str();}
 
 
-PointStats RiseFallSearch (
-		Evaluator& eval,
-		TabooSearch& searchEngine,
-		const int num_points,
-		const int groundLevel,
-		const int stallLimit,
-		PointId basePoint = PointId (eval.guessingVars.size(), 0))
-{
-	assert (CountOnes(basePoint) <= groundLevel);
-	LOG(INFO) << " STAGE 1 - RISE";
-	for (int i = groundLevel; (searchEngine.origin_queue_.empty() && (i <= eval.guessingVars.size())); ++i)
-		for (Results r: eval (searchEngine.GenerateRandomPoints (i, 10 /* num points */, basePoint)))
-			searchEngine.AddPointResults (r, 2 /* Sat threshold */);
-
-	LOG(INFO) << " STAGE 2 - FALL";
-	PointStats lastRecord;
-	for (int stallCount = 0; (!searchEngine.origin_queue_.empty() && (stallCount < stallLimit)); ++stallCount)
-		for (Results r: eval (searchEngine.GenerateNewPoints (num_points, basePoint)))
-			if (searchEngine.AddPointResults (r).id == eval.record.id)
-			{
-				stallCount = 0;
-				lastRecord = eval.record;
-			}
-
-	while(!searchEngine.origin_queue_.empty ()) 
-		searchEngine.origin_queue_.pop ();
-	eval.ResetCurrentRecord ();
-
-	return lastRecord;
-}
 
 void Search (
-	       	RiseFallSearch& riseFall,
+	       	RiseFallSearch& rise_fall_search,
 		const int num_iterations,
 		const int groundLevel,
 		const size_t varFixStep)
@@ -73,7 +43,7 @@ void Search (
 			//TODO: switch to valarray as PointID base container
 			for (int i=0; i<fixedVars.size(); ++i)
 				basePoint[fixedVars[i]] = 1; 
-			PointStats lastRecord = RiseFallSearch (fixedVars, groundLevel);
+			PointStats lastRecord = rise_fall_search (fixedVars, groundLevel);
 			if (lastRecord.sat_total == 0)
 				continue;
 
@@ -258,6 +228,7 @@ int main (int argc, char* argv[])
 				Master (mpi_size), 
 				sample, 
 				guessing_vars,
+				out_mask,
 				(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction)),
 			taboo,
 			numPoints,
