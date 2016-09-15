@@ -6,6 +6,7 @@ CFLAGS=@CFLAGS@
 LIBS=@LIBS@
 LDEPS=@LDEPS@
 HDEPS=@HDEPS@
+EXTRAOBJS=@EXTRAOBJS@
 AIGER=@AIGER@
 
 all: targets
@@ -21,8 +22,8 @@ targets: @AIGERTARGETS@
 analyze:
 	clang --analyze $(CFLAGS) $(shell ls *.c *.h)
 
-liblgl.a: lglib.o lglbnr.o lgldimacs.o lglopts.o makefile
-	ar rc $@ lglib.o lglbnr.o lgldimacs.o lglopts.o
+liblgl.a: lglib.o lglbnr.o lgldimacs.o lglopts.o makefile $(EXTRAOBJS)
+	ar rc $@ lglib.o lglbnr.o lgldimacs.o lglopts.o $(EXTRAOBJS)
 	ranlib $@
 
 lingeling: lglmain.o liblgl.a makefile $(LDEPS)

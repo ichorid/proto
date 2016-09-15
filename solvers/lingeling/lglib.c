@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2015 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -23,6 +23,7 @@
 #include <sys/resource.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <stddef.h>
 
 /*-------------------------------------------------------------------------*/
 
@@ -493,7 +494,7 @@ typedef struct DFOPF { int observed, pushed, flag; } DFOPF;
 typedef struct DFPR { int discovered, finished, parent, root; } DFPR;
 typedef struct EVar { int occ[2], pos, score; } EVar;
 typedef struct Ftk { Flt * start, * top, * end; } Ftk;
-typedef struct HTS { int offset, count; }  HTS;
+typedef struct HTS { unsigned offset; int count; }  HTS;
 typedef struct Lim { int64_t confs, decs, props; } Lim;
 typedef struct PAGSL { int psm, act, glue, size, lidx; } PAGSL;
 typedef struct PSz { int pos, size; } PSz;
@@ -550,12 +551,13 @@ typedef struct Ctr {
 
 typedef struct DVar { HTS hts[2]; } DVar;
 
-#define GLAGBITS 31
+#define GLAGBITS 30
 #define MAXGLAG ((1<<(GLAGBITS-1)) - 1)
 
 typedef struct QVar {
   Flt score;
   unsigned enqueued:1;
+  unsigned important:1;
   signed int glag:GLAGBITS;
   int pos;
 } QVar;
@@ -584,7 +586,7 @@ typedef struct AVar {
 
 typedef struct Ext {
   unsigned equiv:1,melted:1,blocking:2,eliminated:1,tmpfrozen:1,imported:1;
-  unsigned assumed:2,failed:2,aliased:1;
+  unsigned assumed:2,failed:2,aliased:1,important:1;
   signed int val:2, oldval:2;
   int repr, frozen;
 } Ext;
@@ -652,7 +654,7 @@ typedef struct Stats {
 	   int64_t agile, delayed, blocked, notforced, reused;
 	   struct { int64_t count, pen, delta; } delta;
 	   struct { int64_t count, sum; } kept; } restarts;
-  struct { int count, arith, memlim;
+  struct { int count, arith, memlim, reset;
            int64_t collected, retired; } reduced;
   int64_t prgss, irrprgss, enlwchs, pshwchs, dense, sparse;
   int64_t confs, decisions, hdecs, qdecs, randecs, uips, decflipped;
@@ -717,9 +719,11 @@ typedef struct Stats {
     struct { int confs, irr, vars, its, bin, trn; } limhit;
   } simp;
   struct { int count, gcs, units, equivs, trneqs; 
-           struct { struct { int total, last; } max; int64_t sum; } arity; 
+           struct {
+	      struct { int total, last; } max;
+	      struct { int64_t total, exactly1; } sum; } arity; 
 	   struct { int64_t extr, elim; } steps;
-	   struct { int64_t total, last; } extracted; } gauss;
+	   struct { int64_t total, exactly1, last; } extracted; } gauss;
   struct { int count, eliminated, ate, abce, failed, lifted;
            int64_t steps, probed;
 	   struct { int64_t search, hits, cols, ins, rsz; } cache; } cce;
@@ -826,7 +830,7 @@ typedef struct Limits {
   struct { Del del; int64_t steps, added; } bca;
   struct { int64_t steps, time; } trep;
   struct { int64_t confs, inc; int vars; } locs;
-  struct { int redlarge; } reduce;
+  struct { int redlarge, reset; } reduce;
 } Limits;
 
 /*------------------------------------------------------------------------*/
@@ -904,7 +908,7 @@ typedef struct Mem {
   lglalloc alloc; lglrealloc realloc; lgldealloc dealloc;
 } Mem;
 
-typedef struct Wchs { Stk stk; int start[MAXLDFW], free; } Wchs;
+typedef struct Wchs { Stk stk; unsigned start[MAXLDFW]; int free; } Wchs;
 
 typedef struct Wrk {
   Stk queue;
@@ -988,7 +992,9 @@ struct LGL {
   int * repr;
 
   char closeapitrace;
-  FILE * out, * apitrace;
+  FILE * out;
+  FILE * apitrace;
+  FILE * trace;
   char * prefix;
   Cbs * cbs;
 
@@ -1786,7 +1792,7 @@ void lglgetenv (LGL * lgl, Opt * opt, const char * lname) {
   p = uname + 3;
   for (q = lname; *q; q++) {
     assert (p < uname + sizeof uname);
-    *p++ = toupper (*q);
+    *p++ = toupper ((int)*q);
   }
   assert (p < uname + sizeof uname);
   *p = 0;
@@ -1815,7 +1821,7 @@ static void lglchkenv (LGL * lgl) {
     len = eos - (src + 3);
     NEW (dst, len + 1);
     d = dst;
-    for (s = src + 3; s < eos; s++) *d++ = tolower (*s);
+    for (s = src + 3; s < eos; s++) *d++ = tolower ((int)*s);
     *d = 0;
     if (!lglhasopt (lgl, dst) && strcmp (dst, "apitrace"))
       lglwrn (lgl, "invalid 'LGL...' environment '%s'", src);
@@ -2004,9 +2010,9 @@ LGL * lglminit (void * mem,
   NEW (lgl->fltstr, 1);
   NEW (lgl->red, MAXGLUE+1);
   NEW (lgl->wchs, 1);
-  for (i = 0; i < MAXLDFW; i++) lgl->wchs->start[i] = INT_MAX;
-  lglpushstk (lgl, &lgl->wchs->stk, INT_MAX);
-  lglpushstk (lgl, &lgl->wchs->stk, INT_MAX);
+  for (i = 0; i < MAXLDFW; i++) lgl->wchs->start[i] = UINT_MAX;
+  lglpushstk (lgl, &lgl->wchs->stk, (int) UINT_MAX);
+  lglpushstk (lgl, &lgl->wchs->stk, (int) UINT_MAX);
 
   lgl->scinc = lglflt (0, 1);
 
@@ -2341,6 +2347,8 @@ int lglreadopts (LGL * lgl, FILE * file) {
 
 void lglsetout (LGL * lgl, FILE * out) { lgl->out = out; }
 
+void lglsetrace (LGL * lgl, FILE * trace) { lgl->trace = trace; }
+
 FILE * lglgetout (LGL * lgl) { return lgl->out; }
 
 void lglsetprefix (LGL * lgl, const char * prefix) {
@@ -2481,6 +2489,8 @@ static int lgldcmp (LGL * lgl, int l, int k) {
   QVar * pv = lglqvar (lgl, l);
   QVar * qv = lglqvar (lgl, k);
   int res;
+  if (!pv->important && qv->important) return -1;
+  if (pv->important && !qv->important) return 1;
   if ((res = lglscrcmp (lgl, pv->score, qv->score))) return res;
   return 0;
 }
@@ -2822,6 +2832,7 @@ static int lglerepr (LGL * lgl, int elit) {
     if (tmp < 0) next = -next;
     tmp = next;
   }
+  assert (res);
   return res;
 }
 
@@ -2993,9 +3004,9 @@ static int lgldruplig (LGL * lgl) {
 		     (druplig_realloc) lglrsz,
 		     (druplig_free) lgldel);
     druplig_set_check (lgl->druplig, lgl->opts->drupligcheck.val);
-    if (lgl->opts->drupligtrace.val)
-      druplig_set_trace (lgl->druplig, lgl->out);
-    else druplig_set_trace (lgl->druplig, 0);
+    if (!lgl->opts->drupligtrace.val) druplig_set_trace (lgl->druplig, 0);
+    else if (lgl->trace) druplig_set_trace (lgl->druplig, lgl->trace);
+    else druplig_set_trace (lgl->druplig, lgl->out);
     druplig_set_traceorig (lgl->druplig, lgl->opts->drupligtraceorig.val);
     if (lgl->opts->verbose.val > 0) {
       druplig_banner (lgl->out);
@@ -3679,14 +3690,14 @@ static void lglordercls (LGL * lgl) {
 /*------------------------------------------------------------------------*/
 
 
-static void lglfreewch (LGL * lgl, int oldoffset, int oldhcount) {
+static void lglfreewch (LGL * lgl, unsigned oldoffset, int oldhcount) {
   int ldoldhcount = lglceild (oldhcount);
-  lgl->wchs->stk.start[oldoffset] = lgl->wchs->start[ldoldhcount];
+  lgl->wchs->stk.start[oldoffset] = (int) lgl->wchs->start[ldoldhcount];
   assert (oldoffset);
   lgl->wchs->start[ldoldhcount] = oldoffset;
   lgl->wchs->free++;
   assert (lgl->wchs->free > 0);
-  LOG (5, "saving watch stack at %d of size %d on free list %d",
+  LOG (5, "saving watch stack at %u of size %d on free list %d",
        oldoffset, oldhcount, ldoldhcount);
 }
 
@@ -3702,19 +3713,29 @@ static void lglshrinkhts (LGL * lgl, HTS * hts, int newcount) {
   hts->offset = 0;
 }
 
-static long lglenlwchs (LGL * lgl, HTS * hts) {
-  int oldhcount = hts->count, oldoffset = hts->offset, newoffset;
-  int oldwcount, newwcount, oldwsize, newwsize, i, j;
-  int newhcount = oldhcount ? 2*oldhcount : 1;
+static ptrdiff_t lglenlwchs (LGL * lgl, HTS * hts) {
+  int oldhcount, ldoldhcount, ldnewhcount, newhcount;
+  long oldwcount, newwcount, oldwsize, newwsize;
   int * oldwstart, * newwstart, * start;
-  int ldnewhcount = lglfloorld (newhcount);
-  long res = 0;
+  unsigned oldoffset, newoffset, i, j;
+  ptrdiff_t res;
 
+  res = 0;
+
+  oldhcount = hts->count;
+  oldoffset = hts->offset;
+  newhcount = 1, ldnewhcount = 0;
+  ldoldhcount = lglfloorld (oldhcount);
+  assert (ldoldhcount < 31);
+  ldnewhcount = ldoldhcount + 1;
+  if (ldnewhcount > 30) lgldie (lgl, "watcher stack overflow");
   newhcount = (1<<ldnewhcount);
+
   assert (newhcount > oldhcount);
 
-  LOG (5, "increasing watch stack at %d from %d to %d",
-       oldoffset, oldhcount, newhcount);
+  LOG (5,
+    "increasing watch stack at %u from %d to %d",
+     oldoffset, oldhcount, newhcount);
 
   assert (!oldoffset == !oldhcount);
 
@@ -3722,19 +3743,21 @@ static long lglenlwchs (LGL * lgl, HTS * hts) {
 
   newoffset = lgl->wchs->start[ldnewhcount];
   start = lgl->wchs->stk.start;
-  if (newoffset != INT_MAX) {
+  if (newoffset != UINT_MAX) {
     lgl->wchs->start[ldnewhcount] = start[newoffset];
     start[newoffset] = 0;
     assert (lgl->wchs->free > 0);
     lgl->wchs->free--;
-    LOG (5, "reusing free watch stack at %d of size %d",
+    LOG (5, "reusing free watch stack at %u of size %d",
 	 newoffset, (1 << ldnewhcount));
   } else {
     assert (lgl->wchs->stk.start[hts->offset]);
-    assert (lgl->wchs->stk.top[-1] == INT_MAX);
+    assert (lgl->wchs->stk.top[-1] == (int) UINT_MAX);
 
     oldwcount = lglcntstk (&lgl->wchs->stk);
     newwcount = oldwcount + newhcount;
+    if (newwcount > UINT_MAX)
+      lgldie (lgl, "watcher stack memory arena overflow");
     oldwsize = lglszstk (&lgl->wchs->stk);
     newwsize = oldwsize;
 
@@ -3742,24 +3765,28 @@ static long lglenlwchs (LGL * lgl, HTS * hts) {
     assert (oldwcount > 0);
 
     while (newwsize < newwcount) newwsize *= 2;
+    if (newwsize > UINT_MAX) {
+      assert (newwcount <= UINT_MAX);
+      newwsize = UINT_MAX;
+    }
     if (newwsize > oldwsize) {
       newwstart = oldwstart = lgl->wchs->stk.start;
       RSZ (newwstart, oldwsize, newwsize);
-      LOG (3, "resized global watcher stack from %d to %d",
+      LOG (3, "resized global watcher stack from %ld to %ld",
 	   oldwsize, newwsize);
       res = newwstart - oldwstart;
       if (res) {
-	LOG (3, "moved global watcher stack by %ld", res);
+	LOG (3, "moved global watcher stack by %ld", (long) res);
 	start = lgl->wchs->stk.start = newwstart;
       }
       lgl->wchs->stk.end = start + newwsize;
     }
     lgl->wchs->stk.top = start + newwcount;
-    lgl->wchs->stk.top[-1] = INT_MAX;
+    lgl->wchs->stk.top[-1] = (int) UINT_MAX;
     newoffset = oldwcount - 1;
     LOG (5,
-	 "new watch stack of size %d at end of global watcher stack at %d",
-	 newhcount, newoffset);
+      "new watch stack of size %d at end of global watcher stack at %u",
+      newhcount, newoffset);
   }
   assert (start == lgl->wchs->stk.start);
   assert (start[0]);
@@ -3776,8 +3803,8 @@ static long lglenlwchs (LGL * lgl, HTS * hts) {
   return res;
 }
 
-static long lglpushwch (LGL * lgl, HTS * hts, int wch) {
-  long res = 0;
+static ptrdiff_t lglpushwch (LGL * lgl, HTS * hts, int wch) {
+  ptrdiff_t res = 0;
   int * wchs = lglhts2wchs (lgl, hts);
   assert (sizeof (res) == sizeof (void*));
   assert (hts->count >= 0);
@@ -3786,27 +3813,27 @@ static long lglpushwch (LGL * lgl, HTS * hts, int wch) {
     wchs = lglhts2wchs (lgl, hts);
   }
   assert (!wchs[hts->count]);
-  assert (wch != INT_MAX);
+  assert (wch != (int) UINT_MAX);
   wchs[hts->count++] = wch;
   lgl->stats->pshwchs++;
   assert (lgl->stats->pshwchs > 0);
   return res;
 }
 
-static long lglwchbin (LGL * lgl, int lit, int other, int red) {
+static ptrdiff_t lglwchbin (LGL * lgl, int lit, int other, int red) {
   HTS * hts = lglhts (lgl, lit);
   int cs = (RMSHFTLIT (other) | BINCS | red);
-  long res;
+  ptrdiff_t res;
   assert (red == 0 || red == REDCS);
   res = lglpushwch (lgl, hts, cs);
   LOG (3, "new %s binary watch %d blit %d", lglred2str (red), lit, other);
   return res;
 }
 
-static long lglwchtrn (LGL * lgl, int a, int b, int c, int red) {
+static ptrdiff_t lglwchtrn (LGL * lgl, int a, int b, int c, int red) {
   HTS * hts = lglhts (lgl, a);
   int cs = (RMSHFTLIT (b) | TRNCS | red);
-  long res;
+  ptrdiff_t res;
   assert (red == 0 || red == REDCS);
   res = lglpushwch (lgl, hts, cs);
   res += lglpushwch (lgl, hts, c);
@@ -3814,10 +3841,10 @@ static long lglwchtrn (LGL * lgl, int a, int b, int c, int red) {
   return res;
 }
 
-static long lglwchlrg (LGL * lgl, int lit, int other, int red, int lidx) {
+static ptrdiff_t lglwchlrg (LGL * lgl, int lit, int other, int red, int lidx) {
   HTS * hts = lglhts (lgl, lit);
   int blit = (RMSHFTLIT (other) | LRGCS | red);
-  long res = 0;
+  ptrdiff_t res = 0;
   assert (red == 0 || red == REDCS);
   res += lglpushwch (lgl, hts, blit);
   res += lglpushwch (lgl, hts, lidx);
@@ -4621,7 +4648,7 @@ static int lgladdcls (LGL * lgl, int red, int origlue, int force) {
     blit = (lidx << RMSHFT) | OCCS;
     for (p = lgl->clause.start; (other2 = *p); p++) {
       lglincocc (lgl, other2);
-      lglpushwch (lgl, lglhts (lgl, other2), blit);
+      (void) lglpushwch (lgl, lglhts (lgl, other2), blit);
     }
   }
   lglchkirrstats (lgl);
@@ -4835,6 +4862,31 @@ void lglresetphase (LGL * lgl, int elit) {
   ABORTIF (!elit, "invalid literal argument");
   lglesetphase (lgl, elit, 0);
   if (lgl->clone) lglresetphase (lgl->clone, elit);
+}
+
+static void lglisetimportant (LGL * lgl, int lit) {
+  QVar * qv;
+  qv = lglqvar (lgl, lit);
+  qv->important = 1;
+  LOG (2, "setting variable %d to be important", abs (lit));
+}
+
+static void lglesetimportant (LGL * lgl, int elit) {
+  int ilit = lglimport (lgl, elit);
+  if (abs (ilit) >= 2) {
+    LOG (2, "setting external literal %d to be important", elit);
+    lglisetimportant (lgl, ilit);
+  } else
+    LOG (2, "setting external literal %d to be important skipped", elit);
+}
+
+void lglsetimportant (LGL * lgl, int elit) {
+  REQINITNOTFORKED ();
+  TRAPI ("setimportant %d", elit);
+  ABORTIF (!elit, "invalid literal argument");
+  if (elit < 0) lglesetphase (lgl, -elit, -1);
+  else lglesetimportant (lgl, elit);
+  if (lgl->clone) lglsetimportant (lgl->clone, elit);
 }
 
 static void lgleassume (LGL * lgl, int elit) {
@@ -5227,8 +5279,8 @@ static void lglpropsearch (LGL * lgl, int lit) {
   int * q, * eos, blit, other, other2, other3, red, prev;
   int tag, val, val2, lidx, * c, * l;
   const int * p;
+  ptrdiff_t delta;
   int visits;
-  long delta;
   HTS * hts;
 
   LOG (3, "propagating %d in search", lit);
@@ -5418,7 +5470,7 @@ static void lglprop (LGL * lgl, int lit) {
   int tag, val, val2, lidx, * c, * l, dom, hbred, subsumed;
   int glue, flushoccs, visits;
   int64_t steps;
-  long delta;
+  ptrdiff_t delta;
   HTS * hts;
   LOG (3, "propagating %d over ternary and large clauses", lit);
   assert (!lgliselim (lgl, lit));
@@ -6530,7 +6582,19 @@ static void lglreduce (LGL * lgl, int forced) {
   DEL (sizes, MAXGLUE);
   DEL (maps, MAXGLUE);
   if (lgl->opts->reducefixed.val) goto NOINC;
-  if (lglmemout (lgl)) {
+  if (!lgl->limits->reduce.reset) lgl->limits->reduce.reset = 1;
+  if (lgl->stats->reduced.count >= lgl->limits->reduce.reset)
+    lgl->limits->reduce.reset <<= 1;
+  if ((lgl->opts->reducereset.val == 1 &&
+       lglispow2 (lgl->stats->reduced.count)) ||
+      (lgl->opts->reducereset.val == 2 &&
+       lglispow2 (lgl->stats->reduced.count &
+                  ((lgl->stats->reduced.count-1))))) {
+    lgl->limits->reduce.redlarge = 0;
+    inc = lgl->opts->reduceinc.val;
+    lgl->stats->reduced.reset++;
+    lglprt (lgl, 2, "[reduce-%d] reset", lgl->stats->reduced.count);
+  } else if (lglmemout (lgl)) {
     inc = 0;
     lglprt (lgl, 2,
       "[reduce-%d] no increase of reduce limit since memory limit was hit",
@@ -7926,7 +7990,7 @@ RESTART:
   }
 
   lgldrive (lgl, "final", &uip, &glue, &realglue, &jlevel);
-
+  
   if (uip && lglrsn (lgl, uip)[0]) lgl->stats->uips++;
   else if (jlevel + 1 == lgl->level) lgl->stats->decflipped++;
 
@@ -7960,35 +8024,13 @@ RESTART:
       if (!macdfile) macdfile = fopen ("/tmp/macd", "w");
       fprintf (macdfile,
        "%lld %d"
-       " %g %g %g %g"
-       " %g %g %g %g"
-       " %g %g"
-       " %d %d"
-       " %g"
+       " %g %g %g"
        "\n",
        (LGLL) lgl->stats->confs,
        realglue,
-
        lgl->stats->glue.fast.val/(double)(1ll<<32),
-       (!lgl->opts->restartforcemode.val ?
-	 lgl->stats->avglue.val :
-	 lgl->stats->glue.slow.val) /(double)(1ll<<32),
-       lgl->stats->glue.diff.actual/(double)(1ll<<32),
-       lgl->stats->glue.diff.smoothed.val/(double)(1ll<<32),
-
-       lgl->stats->jlevel.fast.val/(double)(1ll<<32),
-       lgl->stats->jlevel.slow.val/(double)(1ll<<32),
-       lgl->stats->jlevel.diff.actual/(double)(1ll<<32),
-       lgl->stats->jlevel.diff.smoothed.val/(double)(1ll<<32),
-
-       100.0 * (lgl->stats->agility/(double)(1ll<<32)),
-       100.0 * lgl->stats->stability.avg.val/(double)(1ll<<32),
-
-       jlevel,
-       tlevel,
-
-       lgl->stats->tlevel.val/(double)(1ll<<32)
-
+       lgl->stats->avglue.val/(double)(1ll<<32),
+       lgl->stats->glue.slow.val/(double)(1ll<<32)
        );
 
       fflush (macdfile);
@@ -8311,19 +8353,21 @@ static void lglrestart (LGL * lgl) {
 }
 
 static void lgldefrag (LGL * lgl) {
-  int * wchs, nwchs, i, idx, bit, ldsize, size, offset, * start, * q, * end;
+  int * wchs, i, idx, bit, ldsize, size, * start, * q, * end;
   const int * p, * eow, * w;
+  unsigned offset;
+  long nwchs;
   HTS * hts;
   lglstart (lgl, &lgl->times->defrag);
   lgl->stats->defrags++;
   nwchs = lglcntstk (&lgl->wchs->stk);
   NEW (wchs, nwchs);
   memcpy (wchs, lgl->wchs->stk.start, nwchs * sizeof *wchs);
-  for (i = 0; i < MAXLDFW; i++) lgl->wchs->start[i] = INT_MAX;
+  for (i = 0; i < MAXLDFW; i++) lgl->wchs->start[i] = UINT_MAX;
   lgl->wchs->free = 0;
   start = lgl->wchs->stk.start;
   assert (nwchs >= 1);
-  assert (start[0] == INT_MAX);
+  assert (start[0] == (int) UINT_MAX);
   offset = 1;
   for (idx = 2; idx < lgl->nvars; idx++)
   for (bit = 0; bit <= 1; bit++) {
@@ -8343,7 +8387,7 @@ static void lgldefrag (LGL * lgl) {
   }
   DEL (wchs, nwchs);
   q = start + offset;
-  *q++ = INT_MAX;
+  *q++ = (int) UINT_MAX;
   assert (q <= lgl->wchs->stk.top);
   lgl->wchs->stk.top = q;
   lglfitstk (lgl, &lgl->wchs->stk);
@@ -9852,8 +9896,8 @@ static void lgldcpdis (LGL * lgl) {
       }
     }
   lglrststk (&lgl->wchs->stk, 2);
-  lgl->wchs->stk.top[-1] = INT_MAX;
-  for (i = 0; i < MAXLDFW; i++) lgl->wchs->start[i] = INT_MAX;
+  lgl->wchs->stk.top[-1] = (int) UINT_MAX;
+  for (i = 0; i < MAXLDFW; i++) lgl->wchs->start[i] = UINT_MAX;
   lgl->wchs->free = 0;
   lglrelstk (lgl, &lgl->learned);
 }
@@ -13776,12 +13820,10 @@ static int lglflushlits (LGL * lgl, int lit) {
   int lidx, slidx, glidx;
   int count, res;
   Val val, val2;
-  long delta;
+  ptrdiff_t delta;
   Stk saved;
   Stk * s;
 
-// Some compilers do not like local functions, thus we use macros instead.
-//
 #define FIXPTRS() do { p += delta, w += delta, eow += delta; } while (0)
 
   HTS * hts;
@@ -15677,7 +15719,7 @@ static int lglcceclause (LGL * lgl,
   int ala, first, old, prev, steps, lidx;
   int * newtop, * d, * q, * r;
   const int * p, * eow, * w;
-  long delta;
+  ptrdiff_t delta;
   HTS * hts;
   LOGCLS (CCELOGLEVEL, c, "trying CCE on clause");
   assert (lglmtstk (&lgl->cce->extend));
@@ -16690,6 +16732,7 @@ static int lglelmdone (LGL * lgl, int * allptr) {
   if (lgl->limits->elm.steps <= lgl->stats->elm.steps) return 1;
   if (!lglmtstk (&lgl->esched)) return 0;
   steps = ((oldsteps = lgl->stats->elm.steps) - lgl->elm->oldsteps);
+  assert (steps >= 0);
   eliminated = (newelmd = lgl->stats->elm.elmd) - lgl->elm->oldelmd;
   assert (eliminated >= 0);
   if (eliminated <= 0) {
@@ -17608,7 +17651,7 @@ static void lglquatres2 (LGL * lgl, int * trnptr, int * quadptr) {
   const int * start, * c, * p, * w, * eow, * q, * d, * l;
   int maxcheck = lgl->stats->quatres.count, check;
   int maxglue = lglscaleglue (lgl, 4), val;
-  long delta;
+  ptrdiff_t delta;
   HTS * hts;
   Stk * s;
   lglstart (lgl, &lgl->times->quatres2);
@@ -18339,8 +18382,8 @@ static int lglunhidebintrn (LGL * lgl, const DFPR * dfpr, int irronly) {
   int nbinred, ntrnred, nbinunits, ntrnunits, ntrnstr, ntrnhbrs;
   const int * p, * eow;
   int ulit, uother;
+  ptrdiff_t delta;
   int * w , * q;
-  long delta;
   HTS * hts;
   nbinred = ntrnred = nbinunits = ntrnunits = ntrnstr = ntrnhbrs = 0;
   for (idx = 2; idx < lgl->nvars; idx++) {
@@ -18464,7 +18507,6 @@ UNIT:
 	    lgldeclscnt (lgl, 3, red, 0);
 	    assert (!lgl->dense);
 	    if (!red && lgl->opts->move.val >= 2) {
-	      long delta;
 	      assert (q >= w);
 	      assert (q[-2] == blit);
 	      assert (q[-1] == other2);
@@ -19359,6 +19401,16 @@ static int lglgaussubcls (LGL * lgl, uint64_t signs,  const int * c) {
   return res;
 }
 
+static void lglgaussextractedxorincstats (LGL * lgl, int size) {
+  lgl->stats->gauss.arity.sum.total += size;
+  if (lgl->stats->gauss.arity.max.total < size)
+    lgl->stats->gauss.arity.max.total = size;
+  if (lgl->stats->gauss.arity.max.last < size)
+    lgl->stats->gauss.arity.max.last = size;
+  lgl->stats->gauss.extracted.total++;
+  lgl->stats->gauss.extracted.last++;
+}
+
 #define GL 2
 
 static int lglgaussextractxoraux (LGL * lgl, const int * c) {
@@ -19397,20 +19449,46 @@ static int lglgaussextractxoraux (LGL * lgl, const int * c) {
   for (q = d; (lit = *q); q++) *q = abs (lit);
   *q = !negs;
   LOGEQN (GL, start, "extracted %d-ary XOR constraint",  size);
-  lgl->stats->gauss.arity.sum += size;
-  if (lgl->stats->gauss.arity.max.total < size)
-    lgl->stats->gauss.arity.max.total = size;
-  if (lgl->stats->gauss.arity.max.last < size)
-    lgl->stats->gauss.arity.max.last = size;
-  lgl->stats->gauss.extracted.total++;
-  lgl->stats->gauss.extracted.last++;
+  lglgaussextractedxorincstats (lgl, size);
+  return 1;
+}
+
+static int lglgaussextractexactly1 (LGL * lgl, const int * c) {
+  const int * p, * q;
+  int l, k, size, par;
+#ifndef NLGLOG
+  int start = lglcntstk (&lgl->gauss->xors);
+#endif
+  if (!lgl->opts->gausscardweak.val) return 0;
+  for (p = c; (l = *p); p++) {
+    if (lgl->stats->gauss.steps.extr >= lgl->limits->gauss.steps.extr) return 0;
+    for (q = p + 1; (k = *q); q++) {
+      INCSTEPS (gauss.steps.extr);
+      if (!lglhasbin (lgl, -l, -k)) return 0;
+    }
+  }
+  par = 1;
+  size = p - c;
+  for (p = c; (l = *p); p++) {
+    if (l < 0) l = -l, par = !par;
+    lglpushstk (lgl, &lgl->gauss->xors, l);
+  }
+  lglpushstk (lgl, &lgl->gauss->xors, par);
+  LOGEQN (GL, start, "extracted %d-ary exactly 1 constraint",  size);
+  lglgaussextractedxorincstats (lgl, size);
+  lgl->stats->gauss.arity.sum.exactly1 += size;
+  lgl->stats->gauss.extracted.exactly1++;
   return 1;
 }
 
 static int lglgaussextractxor (LGL * lgl, const int * c) {
-  int old = lglcntstk (&lgl->gauss->xors), res;
-  if (!(res = lglgaussextractxoraux (lgl, c)))
+  int res;
+  if (lglgaussextractexactly1 (lgl, c)) res = 1;
+  else {
+    int old = lglcntstk (&lgl->gauss->xors), res;
+    if (!(res = lglgaussextractxoraux (lgl, c)))
     lglrststk (&lgl->gauss->xors, old);
+  }
   return res;
 }
 
@@ -20042,7 +20120,9 @@ DONE:
   return res;
 }
 
-static int lgladdcard (LGL * lgl, const int * lits, int bound) {
+static int lgladdcard (LGL * lgl, 
+                       const int * lits,
+		       int bound, int * subsumed_ptr) {
   Card * card = lgl->card;
   const int * p;
   int start, lit;
@@ -20052,6 +20132,7 @@ static int lgladdcard (LGL * lgl, const int * lits, int bound) {
 #endif
   if (lglcardsub (lgl, lits, bound)) {
     lgl->stats->card.subsumed++;
+    if (subsumed_ptr) *subsumed_ptr += 1;
     return 0;
   }
   LOGCLS (CARDLOGLEVEL, lits,
@@ -20197,7 +20278,7 @@ static void lglcardfmstep (LGL * lgl, int pivot,
       card->count[abs (lit)] = 0;
       unit[0] = lit;
       unit[1] = 0;
-      (void) lgladdcard (lgl, unit, 0);
+      (void) lgladdcard (lgl, unit, 0, 0);
     }
   } else if (b >= len) {
     LOGCLS (CARDLOGLEVEL, lgl->clause.start,
@@ -20227,7 +20308,8 @@ static void lglcardfmstep (LGL * lgl, int pivot,
   cn = card->cards.start + cardnegidx + 1;
   for (p = cp; (lit = *p); p++) card->count[abs (lit)] = 0;
   for (q = cn; (lit = *q); q++) card->count[abs (lit)] = 0;
-  if (addcard > 0) (void) lgladdcard (lgl, lgl->clause.start, b);
+  if (addcard > 0)
+    (void) lgladdcard (lgl, lgl->clause.start, b, 0);
   lglclnstk (&lgl->clause);
   // COVER (cardcut == 2 && div == 2 && divsame);
 }
@@ -20708,8 +20790,8 @@ static int lglcardelim (LGL * lgl, int count) {
   int blit, tag, other, other2, bound, used;
   int idx, sign, lit, start, len, res, glue;
   const int * p, * w, * eow, * c, * q;
+  int cardmaxlen, subsumed = 0;
   Card * card = lgl->card;
-  int cardmaxlen;
   int clause[4];
   HTS * hts;
   Stk * s;
@@ -20726,7 +20808,7 @@ static int lglcardelim (LGL * lgl, int count) {
       ;
     if (len >= lgl->opts->cardminlen.val &&
 	len <= cardmaxlen &&
-        lgladdcard (lgl, card->atmost1.start + start, 1)) {
+        lgladdcard (lgl, card->atmost1.start + start, 1, &subsumed)) {
       lgl->stats->card.used.am1.sum += len;
       lgl->stats->card.used.am1.cnt++;
       used++;
@@ -20738,7 +20820,7 @@ static int lglcardelim (LGL * lgl, int count) {
       ;
     if (len >= lgl->opts->cardminlen.val &&
 	len <= cardmaxlen &&
-        lgladdcard (lgl, card->atmost2.start + start, 2)) {
+        lgladdcard (lgl, card->atmost2.start + start, 2, &subsumed)) {
       lgl->stats->card.used.am2.sum += len;
       lgl->stats->card.used.am2.cnt++;
       used++;
@@ -20747,12 +20829,12 @@ static int lglcardelim (LGL * lgl, int count) {
   }
   if (used) {
     lglprt (lgl, 1,
-      "[card-%d] %d out of %d constraints (%.0f%%) meet size limits",
-      lgl->stats->card.count, used, count, lglpcnt (used, count));
+      "[card-%d] using %d out of %d constraints (%.0f%%), %d subsumed",
+      lgl->stats->card.count, used, count, lglpcnt (used, count), subsumed);
   } else {
     lglprt (lgl, 1,
-      "[card-%d] no constraint out of %d meets size limits",
-      lgl->stats->card.count, count);
+      "[card-%d] no constraint out of %d used (%d subsumed)",
+      lgl->stats->card.count, count, subsumed);
     goto SKIP;
   }
   for (idx = 2; idx < lgl->nvars; idx++) {
@@ -20779,7 +20861,7 @@ static int lglcardelim (LGL * lgl, int count) {
 	  other = blit >> RMSHFT;
 	  if (abs (other) < idx) continue;
 	  clause[0] = -lit, clause[1] = -other, clause[2] = 0;
-	  (void) lgladdcard (lgl, clause, 1);
+	  (void) lgladdcard (lgl, clause, 1, 0);
 	} else if (tag == TRNCS) {
 	  other = blit >> RMSHFT;
 	  if (abs (other) < idx) continue;
@@ -20787,7 +20869,7 @@ static int lglcardelim (LGL * lgl, int count) {
 	  if (abs (other2) < idx) continue;
 	  clause[0] = -lit, clause[1] = -other,
 	  clause[2] = -other2, clause[3] = 0;
-	  (void) lgladdcard (lgl, clause, 2);
+	  (void) lgladdcard (lgl, clause, 2, 0);
 	} else assert (tag == LRGCS);
       }
     }
@@ -20809,7 +20891,7 @@ static int lglcardelim (LGL * lgl, int count) {
       for (q = c; (lit = *q); q++)
 	lglpushstk (lgl, &lgl->clause, -lit);
       lglpushstk (lgl, &lgl->clause, 0);
-      (void) lgladdcard (lgl, lgl->clause.start, bound);
+      (void) lgladdcard (lgl, lgl->clause.start, bound, 0);
       lglclnstk (&lgl->clause);
       if (lglterminate (lgl) ||
 	  lgl->limits->card.steps < INCSTEPS (card.steps)) goto SKIP;
@@ -21602,12 +21684,12 @@ static int lglocsaux (LGL * lgl, int hitlim) {
     const char * yals_version ();
     if (lgl->opts->verbose.val > 0)
       lglprt (lgl, 1,
-	"[locs-%d] %s",
+	"[locs-%d] YalSAT Version %s",
 	lgl->stats->locs.count, yals_version ());
     else if (lgl->opts->locsbanner.val) {
       char * prefix = lgl->prefix;
       lgl->prefix = "c ";
-      lglprt (lgl, 0, "%s", yals_version ());
+      lglprt (lgl, 0, "YalSAT Version %s", yals_version ());
       lgl->prefix = prefix;
     }
   }
@@ -22371,6 +22453,10 @@ DONE:
 
 static int lglqcmp (LGL * lgl, int a, int b) {
   Flt ascore, bscore, pos, neg;
+  QVar * p = lglqvar (lgl, a);
+  QVar * q = lglqvar (lgl, b);
+  if (!p->important && q->important) return -1;
+  if (p->important && !q->important) return 1;
   pos = lgl->jwh[lglulit (a)];
   neg = lgl->jwh[lglulit (-a)];
   ascore = lglmulflt (pos, neg);
@@ -22516,14 +22602,6 @@ static Features lglfeatures (LGL * lgl) {
   return res;
 }
 
-static Features lglnormfeatures (Features f) {
-  Features res = f;
-  int * p = (int*) &res, i;
-  for (i = 2; i < NFEATURES; i++)
-    p[i] = lglceild (p[i] + 1);
-  return res;
-}
-
 static int lglintstrlen (int i) {
   assert (i >= 0);
   if (i < 10) return 1;
@@ -22538,11 +22616,25 @@ static int lglintstrlen (int i) {
   return 10;
 }
 
+#ifdef LGLSC14CLASSIFY
+#include "sc14classify/sc14classify.h"
+static int lglsetoptif (
+  LGL * lgl, const char * a, const char * b,
+  const char * opt, int val) {
+  if (strcmp (a, b)) return 0;
+  lglprt (lgl, 1,
+    "[classify-%d] setting '--%s=%d' since assuming '%s' bucket",
+    lgl->stats->features, opt, val, a);
+  lglsetopt (lgl, opt, val);
+  return 1;
+}
+#endif
+
 static void lglshowfeatures (LGL * lgl) {
   int size[NFEATURES], i;
   const int * p;
   char fmt[20];
-  Features f, n;
+  Features f;
   if (!lgl->opts->features.val) return;
   if (lgl->opts->verbose.val <= 0) return;
   if (lgl->stats->features >= lgl->opts->features.val) return;
@@ -22568,15 +22660,50 @@ static void lglshowfeatures (LGL * lgl) {
   }
   lglmsgend (lgl);
 
-  n = lglnormfeatures (f);
-  p = (int*) &n;
-  lglmsgstart (lgl, 0);
-  fprintf (lgl->out, "[neatures-%d]", n.n);
-  for (i = 0; i < NFEATURES; i++) {
-    sprintf (fmt, " %%%dd",  size[i]);
-    fprintf (lgl->out, fmt, p[i]);
+#ifdef LGLSC14CLASSIFY
+  if (lgl->opts->classify.val && lgl->stats->features == 1) {
+    const char * bucket =
+      sc14classify (
+	f.vo, f.vc, f.co, f.cc, f.b, f.t, f.q,
+	f.c1, f.c2, f.c3, f.c4, f.x, f.a1, f.a2, f.g, f.j, f.c, f.o);
+    lglprt (lgl, 1,
+      "[classify-%d] classified as SAT Competition 2014 bucket '%s'",
+      f.n, bucket);
+    lglsetoptif (lgl, bucket, "2d-strip-packing", "block", 0),
+      lglsetoptif (lgl, bucket, "2d-strip-packing", "cce", 0);
+    lglsetoptif (lgl, bucket, "argumentation", "sweeprtc", 1);
+    lglsetoptif (lgl, bucket, "crypto-aes", "restartint", 1000);
+    lglsetoptif (lgl, bucket, "crypto-sha", "restartint", 100);
+    lglsetoptif (lgl, bucket, "crypto-vpmc", "restartint", 4);
+    lglsetoptif (lgl, bucket, "hardware-cec", "sweeprtc", 1);
+    lglsetoptif (lgl, bucket, "hardware-velev", "block", 0),
+      lglsetoptif (lgl, bucket, "hardware-velev", "cce", 0);
+    lglsetoptif (lgl, bucket, "scheduling", "restartint", 1000);
+    if (lgl->opts->classify.val < 2) goto DO_NOT_COMBINE_OPTIONS;
+    lglsetoptif (lgl, bucket, "2d-strip-packing", "restartint", 1000);
+    lglsetoptif (lgl, bucket, "2d-strip-packing", "scincinc", 50);
+    lglsetoptif (lgl, bucket, "2d-strip-packing", "sweeprtc", 1);
+    lglsetoptif (lgl, bucket, "bio", "restartint", 1000);
+    lglsetoptif (lgl, bucket, "crypto-des", "restartint", 100);
+    lglsetoptif (lgl, bucket, "crypto-md5", "restartint", 1000);
+    lglsetoptif (lgl, bucket, "crypto-vmpc", "sweeprtc", 1);
+    lglsetoptif (lgl, bucket, "hardware-cec", "restartint", 4);
+    lglsetoptif (lgl, bucket, "hardware-cec", "scincincmin", 250);
+    lglsetoptif (lgl, bucket, "software-bmc", "elmresched", 7);
+    lglsetoptif (lgl, bucket, "software-bmc", "phase", -1);
+    if (lgl->opts->classify.val < 3) goto DO_NOT_COMBINE_OPTIONS;
+    lglsetoptif (lgl, bucket, "crypto-sha", "sweeprtc", 1);
+    lglsetoptif (lgl, bucket, "diagnosis", "elmresched", 7);
+    lglsetoptif (lgl, bucket, "planning", "reducefixed", 1),
+      lglsetoptif (lgl, bucket, "planning", "reduceinit", 10000);
+    lglsetoptif (lgl, bucket, "scheduling", "block", 0),
+      lglsetoptif (lgl, bucket, "scheduling", "cce", 0);
+    lglsetoptif (lgl, bucket, "scheduling", "elmresched", 7);
+    lglsetoptif (lgl, bucket, "scheduling", "scincinc", 50);
+DO_NOT_COMBINE_OPTIONS:
+    ;
   }
-  lglmsgend (lgl);
+#endif
   lgl->stats->features++;
   lglstop (lgl);
 }
@@ -23796,10 +23923,7 @@ int lglrepr (LGL * lgl, int elit) {
   TRAPI ("repr %d", elit);
   lgl->stats->calls.repr++;
   if (eidx > lgl->maxext) res = elit;
-  else {
-    res = lglerepr (lgl, elit);
-    if (abs (res) <= 1) res = elit;
-  }
+  else res = lglerepr (lgl, elit);
   RETURNARG (lglrepr, elit, res);
   return res;
 }
@@ -24386,10 +24510,14 @@ void lglstats (LGL * lgl) {
     (LGLL) s->elm.subchks, (LGLL) s->elm.strchks);
 
   lglprs (lgl,
-    "gaus: %lld extractions, %lld extracted, %.1f size, %d max",
-    s->gauss.count, s->gauss.extracted,
-    lglavg (s->gauss.arity.sum, s->gauss.extracted.total),
+    "gaus: %d extractions, %lld extracted, %.1f size, %d max",
+    s->gauss.count, s->gauss.extracted.total,
+    lglavg (s->gauss.arity.sum.total, s->gauss.extracted.total),
     s->gauss.arity.max);
+  lglprs (lgl,
+    "gaus: %lld exactly-1 constraints of average arity %.1f",
+    s->gauss.extracted.exactly1,
+    lglavg (s->gauss.arity.sum.exactly1, s->gauss.extracted.exactly1));
   lglprs (lgl,
     "gaus: exported %d units, %d binary and %d ternary equations",
     s->gauss.units, s->gauss.equivs, s->gauss.trneqs);
@@ -24464,6 +24592,7 @@ void lglstats (LGL * lgl) {
     (LGLL) s->moved.trn, lglpcnt (s->moved.trn, sum));
 
   sum = s->otfs.str.red + s->otfs.str.irr;
+  assert (sum == s->otfs.total);
   assert (sum == s->otfs.str.bin + s->otfs.str.trn + s->otfs.str.lrg);
   lglprs (lgl,
     "otfs: %lld driving %.0f%%, %lld restarting %.0f%%",
@@ -24482,7 +24611,6 @@ void lglstats (LGL * lgl) {
     (LGLL) s->otfs.str.lrg, lglpcnt (s->otfs.str.lrg, sum));
 
   sum = s->otfs.sub.red + s->otfs.sub.irr;
-  assert (sum == s->otfs.total);
   assert (sum == s->otfs.sub.bin + s->otfs.sub.trn + s->otfs.sub.lrg);
   lglprs (lgl,
     "otfs: sub %lld, %lld red %.0f%%, %lld irr %.0f%%",
@@ -24564,8 +24692,9 @@ void lglstats (LGL * lgl) {
     lglavg (s->redcls.jlevel.sum, s->redcls.jlevel.red));
 
   lglprs (lgl,
-    "reds: %d count, %.1f conflicts per reduce",
-    s->reduced.count, lglavg (s->confs, s->reduced.count));
+    "reds: %d count, %.1f conflicts per reduce, %d reset",
+    s->reduced.count, lglavg (s->confs, s->reduced.count),
+    s->reduced.reset);
   lglprs (lgl,
     "reds: %d memlim %.0f%%, %d arith %.0f%%",
     s->reduced.memlim, lglpcnt (s->reduced.memlim, s->reduced.count),
@@ -25323,6 +25452,7 @@ int lglvisits(LGL * lgl)
   int visits = s->visits.search + s->visits.simp + s->visits.lkhd;
   return visits;
 }
+
 double lglsearchtime(LGL * lgl)
 {
   double st = lgl->times->search;

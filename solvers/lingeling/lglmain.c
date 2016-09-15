@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2014 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -126,7 +126,7 @@ static void pushoptch (Opt * opt, int ch) {
 }
 
 static const char * parse (LGL * lgl, FILE * in, int * lp) {
-  int ch, prev, m, n, v, c, l, lit, sign, val, embedded = 0, header;
+  int ch, prev, m, n, v, c, l, lit, sign, val, embedded = 0, header, section;
   Opt opt;
   memset (&opt, 0, sizeof opt);
 SKIP:
@@ -179,10 +179,10 @@ SKIP:
      if (embedded) printf ("c\n"); else printf ("c no embedded options\n");
      fflush (stdout);
   }
-  header = m = n = v = l = c = 0;
+  header = section = m = n = v = l = c = 0;
   if (ignmissingheader) {
     if (ch == 'p')  {
-      if (verbose >= 0) printf ("will not read header");
+      if (verbose >= 0) printf ("c will not read header\n");
       while ((ch = next (in, lp)) != '\n' && ch != EOF)
 	;
     } else if (verbose >= 0) printf ("c skipping missing header\n");
@@ -205,7 +205,7 @@ SKIP:
   if (ch != ' ') return "invalid header: expected ' ' after 'p cnf <m>'"; 
   while ((ch = next (in, lp)) == ' ')
     ;
-  if (!isdigit (ch)) 
+  if (!isdigit (ch))
     return "invalid header: expected digit after 'p cnf <m> '";
   n = ch - '0';
   while (isdigit (ch = next (in, lp)))
@@ -226,6 +226,11 @@ BODY2:
       if (ch == EOF) return "end of file in comment";
     goto BODY;
   }
+  if (ch == 'o') {
+    if (section) return "two section headers in a row";
+    section = ch;
+    goto BODY;
+  }
   if (ch == EOF) {
     if (header && c + 1 == n) return "clause missing";
     if (header && c < n) return "clauses missing";
@@ -243,7 +248,7 @@ DONE:
     sign = -1;
   } else sign = 1;
   if (!isdigit (ch)) return "expected digit";
-  if (header && c == n) return "too many clauses";
+  if (header && !section && c == n) return "too many clauses";
   lit = ch - '0';
   while (isdigit (ch = next (in, lp)))
     lit = 10 * lit + (ch - '0');
@@ -252,8 +257,14 @@ DONE:
   if (lit) l++;
   else c++;
   lit *= sign;
-  lgladd (lgl, lit);
-  if (!lit && ignaddcls && c == n) goto DONE;
+  if (section) {
+    assert (section == 'o');		// no other sections yet
+    lglsetimportant (lgl, lit);
+    section = 0;
+  } else {
+    lgladd (lgl, lit);
+    if (!lit && ignaddcls && c == n) goto DONE;
+  }
   goto BODY;
 }
 
@@ -327,10 +338,15 @@ static int nprimes = sizeof primes / sizeof *primes;
 
 int main (int argc, char ** argv) {
   int res, i, j, clin, clout, val, len, lineno, simponly, count, target;
-  const char * iname, * oname, * pname, * match, * p, * err, * thanks;
-  int maxvar, lit, nopts, simplevel;
+  const char * iname, * oname, * pname;
+  const char * match, * p, * err, * thanks;
   FILE * in, * out, * pfile;
+  int maxvar, lit, nopts, simplevel;
   char * tmp;
+#ifndef NLGLDRUPLIG
+  const char * tname = 0;
+  FILE * tfile = 0;
+#endif
   LGL * lgl;
   OBuf obuf;
   lineno = 1;
@@ -349,9 +365,12 @@ int main (int argc, char ** argv) {
       printf ("-s               only simplify and print to output file\n");
       printf ("-O<L>            set simplification level to <L>\n");
       printf ("-o <output>      set output file (default 'stdout')\n");
+#ifndef NLGLDRUPLIG
+      printf ("-t <trace>       set proof trace output file (enable tracing)\n");
+#endif
       printf ("-p <options>     read options from file\n");
       printf ("\n");
-      printf ("-t <seconds>     set time limit\n");
+      printf ("-T <seconds>     set time limit\n");
       printf ("\n");
       printf ("-a <assumption>  use multiple assumptions\n");
       printf ("\n");
@@ -373,9 +392,6 @@ int main (int argc, char ** argv) {
 #ifdef NLGLDRUPLIG
       printf ("--verify         online forward check\n");
       printf ("--proof          generate proof file\n");
-#else
-      printf ("--verify         ignored (no DRUPLIG library)\n");
-      printf ("--proof          ignored (no DRUPLIG library)\n");
 #endif
       printf ("\n");
       printf ("--thanks=<whom>  alternative way of specifying the seed\n");
@@ -396,6 +412,10 @@ int main (int argc, char ** argv) {
 "Thus those have to be installed and in the current path if needed.\n");
       printf ("\n");
       lglusage (lgl);
+      goto DONE;
+    } else if (!strcmp (argv[i], "--version")) {
+      printf ("%s\n", lglversion ());
+      fflush (stdout);
       goto DONE;
     } else if (!strcmp (argv[i], "-s")) simponly = 1;
     else if (argv[i][0] == '-' && argv[i][1] == 'O') {
@@ -441,9 +461,26 @@ int main (int argc, char ** argv) {
 	goto DONE;
       }
       pname = argv[i];
+#ifndef NLGLDRUPLIG
     } else if (!strcmp (argv[i], "-t")) {
       if (++i == argc) {
 	fprintf (stderr, "*** lingeling error: argument to '-t' missing\n");
+	res = 1;
+	goto DONE;
+      } 
+      if (tname) {
+	fprintf (stderr, 
+	         "*** lingeling error: "
+		 "multiple output files '%s' and '%s'\n",
+		 tname, argv[i]);
+	res = 1;
+	goto DONE;
+      }
+      tname = argv[i];
+#endif
+    } else if (!strcmp (argv[i], "-T")) {
+      if (++i == argc) {
+	fprintf (stderr, "*** lingeling error: argument to '-T' missing\n");
 	res = 1;
 	goto DONE;
       }
@@ -452,11 +489,11 @@ int main (int argc, char ** argv) {
 	res = 1;
 	goto DONE;
       }
-      for (p = argv[i]; *p && isdigit (*p); p++) 
+      for (p = argv[i]; *p && isdigit ((int)*p); p++) 
 	;
       if (p == argv[i] || *p || (timelimit = atoi (argv[i])) < 0) {
 	fprintf (stderr, 
-	  "*** lingeling error: invalid time limit '-t %s'\n", argv[i]);
+	  "*** lingeling error: invalid time limit '-T %s'\n", argv[i]);
 	res = 1;
 	goto DONE;
       }
@@ -510,12 +547,14 @@ int main (int argc, char ** argv) {
       lglsetopt (lgl, "log", lglgetopt (lgl, "log") + 1);
     } else if (!strcmp (argv[i], "-v")) {
       lglsetopt (lgl, "verbose", lglgetopt (lgl, "verbose") + 1);
+#ifndef NLGLDRUPLIG
     } else if (!strcmp (argv[i], "--verify")) {
       lglsetopt (lgl, "druplig", 1);
       lglsetopt (lgl, "drupligcheck", 1);
     } else if (!strcmp (argv[i], "--proof")) {
       lglsetopt (lgl, "druplig", 1);
       lglsetopt (lgl, "drupligtrace", 1);
+#endif
     } else if (argv[i][0] == '-') {
       if (argv[i][1] == '-') {
 	match = strchr (argv[i] + 2, '=');
@@ -529,7 +568,7 @@ int main (int argc, char ** argv) {
 	  } else if (!strncmp (argv[i], "--thanks=", len)) {
 	    thanks = match + 1;
 	    continue;
-	  } else if (!isdigit (*p)) {
+	  } else if (!isdigit ((int)*p)) {
 ERR:
             fprintf (stderr,
 	      "*** lingeling error: invalid command line option '%s'\n",
@@ -537,7 +576,7 @@ ERR:
 	    res = 1;
 	    goto DONE;
 	  }
-	  while (*++p) if (!isdigit (*p)) goto ERR;
+	  while (*++p) if (!isdigit ((int)*p)) goto ERR;
 	  len = match - argv[i] - 2;
 	  tmp = malloc (len + 1);
 	  j = 0;
@@ -575,6 +614,22 @@ ERR:
     if (simponly || oname) fflush (stdout);
     lglsetopt (lgl, "trep", 1);
   }
+#ifndef NLGLDRUPLIG
+  if (tname) {
+    tfile = fopen (tname, "w");
+    if (!tfile) {
+      fprintf (stderr,
+         "*** lingeling error: can not write proof trace file %s\n", tname);
+      res = 1;
+      goto DONE;
+    }
+    if (verbose >= 0)
+      printf ("c proof trace file %s\n", tname), fflush (stdout);
+    lglsetrace (lgl, tfile);
+    lglsetopt (lgl, "druplig", 1);
+    lglsetopt (lgl, "drupligtrace", 2);
+  }
+#endif
   if (thanks) {
     unsigned seed = 0, i = 0, ch;
     int iseed;
@@ -745,6 +800,9 @@ ERR:
   }
   if (verbose >= 0) fputs ("c\n", stdout), lglstats (lgl);
 DONE:
+#ifndef NLGLDRUPLIG
+  if (tfile) fclose (tfile);
+#endif
   closefile (in, clin);
   resetsighandlers ();
   lgl4sigh = 0;

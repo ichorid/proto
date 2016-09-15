@@ -19,7 +19,7 @@ EOF
 echo "#define LGL_OS \"`uname -srmn`\""
 echo "#define LGL_COMPILED \"`date`\""
 cat<<EOF
-#define LGL_RELEASED "Mon Nov  9 11:04:59 CET 2015"
-#define LGL_VERSION "bal"
-#define LGL_ID "2293bef0a4bd680210f6f5a453efa8b0a26f53ee"
+#define LGL_RELEASED "Thu Jul  7 10:21:35 CEST 2016"
+#define LGL_VERSION "bbc"
+#define LGL_ID "923038088b727dcc8bd03aa8dfb5013bd03bf8c4"
 EOF

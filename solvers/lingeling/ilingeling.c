@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2015 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -182,8 +182,8 @@ static double getime () { return currentime () - startime; }
 
 static int isnum (const char * str) {
   const char * p = str;
-  if (!isdigit (*p++)) return 0;
-  while (*p && isdigit (*p)) p++;
+  if (!isdigit ((int)*p++)) return 0;
+  while (*p && isdigit ((int)*p)) p++;
   return !*p;
 }
 
