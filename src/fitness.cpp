@@ -12,25 +12,27 @@ PointStats IncapacityFitnessFunction(const PointResults& results)
 
 	// Create new point
 	ps.id = results.id;
-	ps.sample_size = results.reps.size();
-	ps.sat_total = sat_scans.size();
+	size_t sample_size = results.reps.size();
+	ps.sample_size = sat_scans.size();
 
 	// derive it's best incapacity
 	int S = CountOnes(ps.id);
 	for (int i = 0; i < sat_scans.size(); ++i)
 	{
 		double t = sat_scans[i];
-		double p = double(1+i) / ps.sample_size;// predicted SAT probability
+		double p = double(1+i) / sample_size;// predicted SAT probability
 		double incapacity = S + log2(t * 3/p) ;
 		if (incapacity < ps.best_incapacity)
 		{
 		       	ps.best_incapacity = incapacity;// update local record
 			ps.best_cutoff  = sat_scans[i];
+			ps.sat_total = i+1;
 		}
 	}
 	return ps;
 }
 
+// Experimental feature!
 PointStats TotalSolvedFitnessFunction(const PointResults& results)
 {
 	// Create new point
@@ -39,6 +41,7 @@ PointStats TotalSolvedFitnessFunction(const PointResults& results)
 	ps.sample_size = results.reps.size();
 	ps.sat_total = 0;
 
+	// FIXME: fix sample_size report
 	int totalScans = 0;
 	for (auto report: results.reps)
 	{
