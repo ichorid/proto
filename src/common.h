@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <sstream>
 #include <iomanip>
+#include <unordered_set>
 
 typedef int Lit;
 typedef int Var;
@@ -30,7 +31,7 @@ typedef enum
 
 struct Task
 {
-	PointId id = "";
+	PointId id = PointId();
 	std::vector <UnitClauseVector> units;
 };
 
@@ -76,6 +77,15 @@ template <typename T> T BM_xor(const T& a, const T& b)
 	auto out = ab ? a : b;
 	for (int i = 0; i < (ab ? b.size() : a.size()); ++i)
 		out[i] = a[i] ^ b[i];
+	return out;
+}
+
+template <typename T> T BM_sub(const T& a, const T& b)
+{
+	assert (a.size() >= b.size());
+	auto out = a;
+	for (int i = 0; i < a.size(); ++i)
+		out[i] = a[i] & ~b[i];
 	return out;
 }
 /*
@@ -213,5 +223,44 @@ inline std::vector<PointId> HammingNbhd (const PointId& point, const char phase 
 		}
 	}
 	return result;
+}
+
+inline std::vector<PointId> PaletteNbhd (
+		std::unordered_set <PointId>& palette,
+	       	const PointId& point,
+	       	const char phase = 2)
+{
+	std::vector<PointId> result;
+	for (auto color: palette)
+	{
+		PointId tmp = point;
+
+		if (phase==0)
+			tmp = BM_sub (tmp, color);
+		else if (phase==1)
+			tmp = BM_or  (tmp, color);
+		else 
+			tmp = BM_xor (tmp, color);
+
+		result.push_back(tmp);
+	}
+	return result;
+}
+
+
+
+inline PointId Ints2Point (std::vector <int>& ints, const std::vector <int>& guessing_vars)
+{
+	PointId point (guessing_vars.size(), 0);
+	std::sort (ints.begin(), ints.end());
+	int i = 0;
+	for (auto v: ints)
+	{
+		while (v != guessing_vars[i])
+			i++;
+		point[i] = 1;
+	}
+
+	return point;
 }
 #endif

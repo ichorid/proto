@@ -47,6 +47,7 @@ std::vector <PointId> TabooSearch::Unchecked (const std::vector<PointId> & vec)
 	return result;
 }
 
+//TODO rewrite with templates
 
 std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point, const PointId& fixedVarsMask)
 {
@@ -60,7 +61,21 @@ std::vector<PointId> TabooSearch::GetUncheckedHammingNbhd (const PointId& point,
 	return result;
 }
 
-void TabooSearch::AddPointResults (const PointStats& ps)
+
+std::vector<PointId> TabooSearch::GetUncheckedPaletteNbhd (const PointId& point, const PointId& fixedVarsMask)
+{
+	std::vector <PointId> result;
+	for (PointId p: PaletteNbhd (varPalette_, point, 0))
+	{
+		PointId tmp = BM_or (p, fixedVarsMask);
+		if (!PointChecked (tmp))
+			result.push_back (tmp);
+	}
+	return result;
+}
+
+
+PointStats* TabooSearch::AddPointResults (const PointStats& ps, int sat_tresh_tmp)
 {
 	PointStats* psp = new PointStats; 
 	*psp = ps;
@@ -69,15 +84,14 @@ void TabooSearch::AddPointResults (const PointStats& ps)
 	assert (checked_points_.count(ps.id)==0);
 	checked_points_[ps.id] = psp;
 
-	if (ps.sat_total < sat_threshold_)
-		return;
-	origin_queue_.push(psp);
-	// Check and update global incapacity record if necessary
-	if (ps.best_incapacity < global_record_->best_incapacity)
+	if (ps.sat_total >= (sat_tresh_tmp>0 ? sat_tresh_tmp : sat_threshold_))
 	{
-		global_record_= checked_points_[ps.id]; // New record found !!!
-		LOG(INFO) << " New record found: " << PrintPointStats(ps);
+		origin_queue_.push(psp);
+		// Check and update global incapacity record if necessary
+		if (ps.best_incapacity < global_record_->best_incapacity)
+			global_record_= checked_points_[ps.id]; // New record found !!!
 	}
+	return psp;
 }
 
 std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidates, const PointId& fixedVarsMask)
@@ -99,7 +113,8 @@ std::vector <PointId> TabooSearch::GenerateNewPoints(const int desired_candidate
 			level_desired_candidates += slice_size;
 		}
 		// Select next origin candidate from top incapacity queue
-		auto nbhd = GetUncheckedHammingNbhd(origin_queue_.top()->id, fixedVarsMask);
+		//auto nbhd = GetUncheckedHammingNbhd(origin_queue_.top()->id, fixedVarsMask);
+		auto nbhd = GetUncheckedPaletteNbhd(origin_queue_.top()->id, fixedVarsMask);
 		if (nbhd.size() == 0)
 		{
 			// All origin's neighbours were already checked, so
@@ -165,17 +180,16 @@ std::vector <PointId> TabooSearch::GenerateRandomPoints(
 	{
 		//FIXME: add BETTER safety checks!
 		int failCount = 10000;
+		std::vector <const PointId*> colorsPtrs;
+		for (auto &color: varPalette_)
+			colorsPtrs.push_back (&color);
 		while (candidates.size() < desired_candidates)
 		{
-			PointId randomBools;
-			for (size_t i=0; i < baseCount0; ++i)
-				randomBools.push_back (i < (num_ones - baseCount1) ? 1 : 0);
-			std::shuffle (randomBools.begin(), randomBools.end(), rng); 
-
-			PointId point;
-			size_t i=0;
-			for (auto v: basePoint)
-				point.push_back (v ? v : randomBools[i++]);
+			// Randomize colors (vars) order
+			std::shuffle (colorsPtrs.begin(), colorsPtrs.end(), rng);
+			PointId point = basePoint;
+			for (int i = 0; CountOnes(point) < num_ones; ++i)
+				point = BM_or (point, *colorsPtrs[i]);
 
 			if (!PointChecked (point) && candidates.count (point) == 0)
 				candidates.insert (point);
