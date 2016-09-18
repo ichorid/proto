@@ -34,8 +34,11 @@ int ParseInt(IStream& in)
 	if (*in < '0' || *in > '9')
 	       	std::cout << "PARSE ERROR! Unexpected char:" << *in << std::endl, exit(1);
 	while (*in >= '0' && *in <= '9')
+	{
+		if (in.eof()) return 0;
 		val = val*10 + (*in - '0'),
 		++in;
+	}
 	return neg ? -val : val;
 }
 
