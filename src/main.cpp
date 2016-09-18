@@ -169,6 +169,8 @@ int main (int argc, char* argv[])
 			LOG(INFO) << "No var groups / guessing vars file provided. Will solve on core variables.";
 			for (int i = 0; i < core_len; ++i)
 				guessing_vars.push_back (i + 1);
+
+			varGroupsMasks = HammingNbhd (PointId (core_len, 0), 1);
 		}
 
 		if (startingPointsFilename_arg.isSet())
