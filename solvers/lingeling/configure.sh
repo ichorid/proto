@@ -12,6 +12,7 @@ other=none
 druplig=undefined
 profile=undefined
 static=no
+classify=no
 aiger=undefined
 yalsat=undefined
 files=no
@@ -56,6 +57,8 @@ do
        echo "--druplig       specify Druplig directory (default '../druplig')"
        echo "--no-druplig    do not include Druplig code"
        echo "--files         generate statistics files"
+       echo
+       echo "--classify      use classifier for automatic parameter setting"
        exit 0
        ;;
     -g|--debug) debug=yes;;
@@ -80,6 +83,7 @@ do
     --druplig) druplig=`echo "$1"|sed -e 's,^--druplig=,,'`;;
     --no-druplig) druplig=no;;
     --files) files=yes;;
+    --classify) classify=yes;;
     -f*|-m*) if [ $other = none ]; then other=$1; else other="$other $1"; fi;;
     *) echo "*** configure.sh: invalid command line option '$1'"; exit 1;;
   esac
@@ -240,6 +244,26 @@ fi
 [ $files = no ] && CFLAGS="$CFLAGS -DNLGLFILES"
 [ $dema = no ] && CFLAGS="$CFLAGS -DNLGLDEMA"
 
+if [ $classify = yes -a -d sc14classify ]
+then
+  cd sc14classify
+  if [ $debug = yes ]
+  then
+    echo "calling 'configure.sh -g' in sub-directory 'sc14classify'"
+    ./configure.sh -g || exit 1
+  else
+    echo "calling 'configure.sh' in sub-directory 'sc14classify'"
+    ./configure.sh || exit 1
+  fi
+  echo "calling 'make sc14classify.o' in sub-directory 'sc14classify'"
+  make sc14classify.o || exit 1
+  cd ..
+  [ x"$CFLAGS" = x ] || CFLAGS="${CFLAGS} "
+  CFLAGS="$CFLAGS -DLGLSC14CLASSIFY"
+  [ x"$EXTRAOBJS" = x ] || EXTRAOBJS="${EXTRAOBJS} "
+  EXTRAOBJS="sc14classify/sc14classify.o"
+fi
+
 echo "$CC $CFLAGS"
 
 ##########################################################################
@@ -250,6 +274,7 @@ sed \
   -e "s,@CFLAGS@,$CFLAGS," \
   -e "s,@HDEPS@,$HDEPS," \
   -e "s,@LDEPS@,$LDEPS," \
+  -e "s,@EXTRAOBJS@,$EXTRAOBJS," \
   -e "s,@AIGERTARGETS@,$AIGERTARGETS," \
   -e "s,@AIGER@,$AIGER," \
   -e "s,@LIBS@,$LIBS," \

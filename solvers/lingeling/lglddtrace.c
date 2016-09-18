@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2013 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #ifdef NDEBUG
@@ -32,7 +32,7 @@ static const char * iname, * oname;
 
 typedef enum Type {
   ADD,ASSUME,DEREF,FAILED,FREEZE,INIT,
-  MELT,REUSE,OPTION,PHASE,RELEASE,RETURN,SAT,SIMP,REPR,
+  MELT,REUSE,OPTION,PHASE,RELEASE,RETURN,SAT,SIMP,REPR,SETIMPORTANT,
   SETPHASE,RESETPHASE,SETPHASES,FLUSH,REDUCE,FROZEN,USABLE,REUSABLE,
   MAXVAR,INCVAR,FIXED,FIXATE,CHKCLONE,CHANGED,INCONSISTENT,LKHD
 } Type;
@@ -78,6 +78,7 @@ static void event (Type type, int arg, const char * opt) {
     case DEREF:
     case FAILED:
     case FREEZE:
+    case SETIMPORTANT:
     case SETPHASE:
     case RESETPHASE:
     case MELT:
@@ -153,7 +154,7 @@ static int isnumstr (const char * str) {
   const char * p;
   int ch;
   if (*(p = str) == '-') p++;
-  if (!isdigit (*p++)) return 0;
+  if (!isdigit ((int)*p++)) return 0;
   while (isdigit (ch = *p)) p++;
   return !ch;
 }
@@ -206,6 +207,7 @@ static void process (void) {
       case FIXATE: lglfixate (lgl); break;
       case REDUCE: lglreducecache (lgl); break;
       case FLUSH: lglflushcache (lgl); break;
+      case SETIMPORTANT: lglsetimportant (lgl, e->arg); break;
       case SETPHASES: lglsetphases (lgl); break;
       case SETPHASE: lglsetphase (lgl, e->arg); break;
       case RESETPHASE: lglresetphase (lgl, e->arg); break;
@@ -286,6 +288,7 @@ static void print (Event * e, FILE * file) {
     case FIXATE: fprintf (file, "fixate\n"); break;
     case REDUCE: fprintf (file, "reduce\n"); break;
     case FLUSH: fprintf (file, "flush\n"); break;
+    case SETIMPORTANT: fprintf (file, "setimportant %d\n", lit (e->arg)); break;
     case SETPHASES: fprintf (file, "setphases\n"); break;
     case SETPHASE: fprintf (file, "setphase %d\n", lit (e->arg)); break;
     case RESETPHASE: fprintf (file, "resetphase %d\n", lit (e->arg)); break;
@@ -333,6 +336,7 @@ static const char * type2str (Type type) {
     case REDUCE: return "reduce";
     case FLUSH: return "flush";
     case FREEZE: return "freeze";
+    case SETIMPORTANT: return "setimportant";
     case SETPHASES: return "setphases";
     case SETPHASE: return "setphase";
     case RESETPHASE: return "resetphase";
@@ -430,6 +434,7 @@ RESTART:
       case REUSABLE:
       case USABLE:
       case REPR:
+      case SETIMPORTANT:
       case SETPHASE:
       case RESETPHASE:
       case FREEZE:
@@ -789,6 +794,8 @@ NEXT:
   else if (!strcmp (tok, "simp")) event (SIMP, intarg ("simp"), 0);
   else if (!strcmp (tok, "setphases")) noarg (SETPHASES);
   else if (!strcmp (tok, "freeze")) event (FREEZE, intarg ("freeze"), 0);
+  else if (!strcmp (tok, "setimportant"))
+    event (SETIMPORTANT, intarg ("setimportant"), 0);
   else if (!strcmp (tok, "setphase")) event (SETPHASE, intarg ("setphase"), 0);
   else if (!strcmp (tok, "resetphase"))
     event (SETPHASE, intarg ("resetphase"), 0);

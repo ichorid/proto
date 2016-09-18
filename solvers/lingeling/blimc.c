@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2013 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"

@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2013 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include <stdlib.h>
@@ -54,7 +54,7 @@ static int isnumstr (const char * str) {
   const char * p;
   int ch;
   if (*(p = str) == '-') p++;
-  if (!isdigit (*p++)) return 0;
+  if (!isdigit ((int)*p++)) return 0;
   while (isdigit (ch = *p)) p++;
   return !ch;
 }
@@ -165,6 +165,8 @@ NEXT:
   else if (!strcmp (tok, "usable")) res = lglusable (lgl, intarg ("usable"));
   else if (!strcmp (tok, "reusable"))
     res = lglreusable (lgl, intarg ("reusable"));
+  else if (!strcmp (tok, "setimportant"))
+    lglsetimportant (lgl, intarg ("setimportant"));
   else if (noarg (tok, "setphases")) lglsetphases (lgl);
   else if (!strcmp (tok, "setphase")) lglsetphase (lgl, intarg ("setphase"));
   else if (!strcmp (tok, "resetphase"))

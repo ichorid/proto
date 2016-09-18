@@ -50,7 +50,10 @@ void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 	//      !!!WARNING!!!
 	// Non-frozen/non-assumed vars become UNUSABLE after call to lglsolve/simp !
 	for (auto lit: uc_vector)
+	{
 		lglassume (lgl_, lit);
+		lglfreeze (lgl_, lit);
+	}
 
 	start_time = cpuTime();
 	time_limit = double( scans_limit_) / 1000000 ;
@@ -65,6 +68,11 @@ void LingelingWrapper::Solve(const UnitClauseVector& uc_vector)
 		state = UNSAT;
 	else
 		state = STOPPED;
+	// Unfreeze assumed literals	
+	for (auto lit: uc_vector)
+	{
+		lglmelt (lgl_, lit);
+	}
 }
 
 void LingelingWrapper::AddUCs(const UnitClauseVector& uc_vector)

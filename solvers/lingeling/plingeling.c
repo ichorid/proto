@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2014 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -293,7 +293,7 @@ static void catchsig (int sig) {
 
 static void setsighandlers (void) {
   sig_int_handler = signal (SIGINT, catchsig);
-  sig_segv_handler = signal (SIGSEGV, catchsig);
+  // sig_segv_handler = signal (SIGSEGV, catchsig);
   sig_abrt_handler = signal (SIGABRT, catchsig);
   sig_term_handler = signal (SIGTERM, catchsig);
 }
@@ -877,6 +877,7 @@ static void setopts (LGL * lgl, int i) {
   setopt (i, lgl, "log", loglevel);
 #endif
   setopt (i, lgl, "seed", i);
+  setopt (i, lgl, "classify", 0);
 
   if (i && (locs >= 2 || (locs && (i > 7 || (i & 1))))) {
     setopt (i, lgl, "plain", locs == 2 || (i & 3) == 1);
@@ -886,22 +887,23 @@ static void setopts (LGL * lgl, int i) {
     setopt (i, lgl, "locsclim", (1<<24));
   } else {
     j = locs ? i/2 : i;
-    switch (j % 12) {
+    switch (j % 13) {
       case  0: default: break;
       case  1: setopt (i, lgl, "plain", 1),
                setopt (i, lgl, "decompose", 1); break;
       case  2: setopt (i, lgl, "restartint", 1000); break;
-      case  3: setopt (i, lgl, "block", 0),
+      case  3: setopt (i, lgl, "elmresched", 7); break;
+      case  4: setopt (i, lgl, "scincincmin", 250); break;
+      case  5: setopt (i, lgl, "block", 0),
                setopt (i, lgl, "cce", 0); break;
-      case  4: setopt (i, lgl, "phase", -1); break;
-      case  5: setopt (i, lgl, "phase", 1); break;
-      case  6: setopt (i, lgl, "sweeprtc", 1); break;
-      case  7: setopt (i, lgl, "restartint", 5); break;
-      case  8: setopt (i, lgl, "elmresched", 7); break;
-      case  9: setopt (i, lgl, "scincincmin", 250); break;
-      case 10: setopt (i, lgl, "scincinc", 50); break;
+      case  6: setopt (i, lgl, "scincinc", 50); break;
+      case  7: setopt (i, lgl, "phase", -1); break;
+      case  8: setopt (i, lgl, "phase", 1); break;
+      case  9: setopt (i, lgl, "sweeprtc", 1); break;
+      case 10: setopt (i, lgl, "restartint", 100); break;
       case 11: setopt (i, lgl, "reduceinit", 10000);
                setopt (i, lgl, "reducefixed", 1); break;
+      case 12: setopt (i, lgl, "restartint", 4); break;
     }
   }
   lglseterm (lgl, term, w);
@@ -1040,7 +1042,6 @@ getsystemcores (0), bytes2mbll (totalmem), bytes2gbll (totalmem));
     else if (name && !isposnum (argv[i]))
       die ("expected positive number of threads but got '%s'", argv[i]);
     else if (name) {
-      if (nworkers2) die ("'-t' option and number of threads given");
       if ((nworkers2 = atoi (argv[i])) <= 0)
 	die ("invalid number of threads '%s'", argv[i]);
     } else name = argv[i];

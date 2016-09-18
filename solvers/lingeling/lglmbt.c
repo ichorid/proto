@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2013 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -317,6 +317,7 @@ static void * sat (Data * data, unsigned r) {
     if (pick (&rng, 0, 1)) lit = -lit;
     if (!pick (&rng, 0, 3)) lglresetphase (lgl, lit);
     else lglsetphase (lgl, lit);
+    if (!pick (&rng, 0, 11)) lglsetimportant (lgl, lit);
   }
   if (!pick (&rng, 0, 100)) lglchkclone (lgl);
   if (!pick (&rng, 0, 66)) lglfixate (lgl);
@@ -423,7 +424,7 @@ static void erase (void) {
 static int isnumstr (const char * str) {
   const char * p;
   for (p = str; *p; p++)
-    if (!isdigit (*p)) return 0;
+    if (!isdigit ((int)*p)) return 0;
   return 1;
 }
 

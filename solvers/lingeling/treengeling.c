@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2015 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -147,7 +147,7 @@ static Parallel parallel;
 static int nparallel;
 
 static int maxactive, firstosplit, numtosplit, lastosplit;
-static int maxworkers, numworkers, maxnumworkers;
+static int maxworkers, maxworkers2, numworkers, maxnumworkers;
 
 static Job ** jobs;
 static int numjobs, sizejobs;
@@ -575,11 +575,12 @@ static void usage () {
   long long m = ((b+(1<<20)-1) >> 20), g = ((b+(1<<30)-1) >> 30); 
   int c = getcores (0);
   printf (
-"usage: treengeling [<option> ...] [<file>]\n"
+"usage: treengeling [<option> ...] [<file> [<workers>]]\n"
 "\n"
 "where <option> is one of the following\n"
 "\n"
 "  -h             print option summary\n"
+"  --version      print version and exit\n"
 "  -v             increase verbose level\n"
 "  -S             print statistics for each solver instance too\n"
 "  -n             do not print satisfying assignments\n"
@@ -634,6 +635,8 @@ static void usage () {
   fflush (stdout);
   exit (0);
 }
+
+static void version () { printf ("%s\n", lglversion ()); exit (0); }
 
 static int next () {
   int res = getc (file);
@@ -696,8 +699,8 @@ BODY:
 
 static int isnum (const char * str) {
   const char * p = str;
-  if (!isdigit (*p)) return 0;
-  while (*++p) if (!isdigit (*p)) return 0;
+  if (!isdigit ((int)*p)) return 0;
+  while (*++p) if (!isdigit ((int)*p)) return 0;
   return 1;
 }
 
@@ -793,6 +796,7 @@ static void initroot () {
   msg ("initializing root solver instance");
   root = lglminit (0, alloc, resize, dealloc);
   lglsetopt (root, "druplig", 0);
+  lglsetopt (root, "classify", 0);
   if (verbose) lglsetopt (root, "verbose", verbose);
   else if (!showstats) lglsetopt (root, "profile", 0);
   lglsetopt (root, "abstime", 1);
@@ -2072,6 +2076,7 @@ int main (int argc, char ** argv) {
   init ();
   for (i = 1; i < argc; i++) {
     if (!strcmp (argv[i], "-h")) usage ();
+    else if (!strcmp (argv[i], "--version")) version ();
     else if (!strcmp (argv[i], "-v")) verbose++;
     else if (!strcmp (argv[i], "-S")) showstats = 1;
     else if (!strcmp (argv[i], "-n")) nowitness = 1;
@@ -2117,6 +2122,7 @@ int main (int argc, char ** argv) {
       if (hardlimbytes <= 0) err ("invalid number of GB in '-g %s'", argv[i]);
     } else if (!strcmp (argv[i], "-t")) {
       if (maxworkers > 0) err ("multiple '-t <workers>' options");
+      if (maxworkers2 > 0) err ("both '-t <workers>' and '<workers>'");
       if (++i == argc) err ("argument to '-t' missing");
       if (!isnum (argv[i]))
 	err ("expected number as argument in '-t %s'", argv[i]);
@@ -2153,10 +2159,19 @@ int main (int argc, char ** argv) {
     else if (parselopt (argv[i], &maxclim, "max")) ;
     else if (*argv[i] == '-')
       err ("invalid command line option '%s' (try '-h')", argv[i]);
-    else if (fname) err ("multiple files '%s' and '%s'", fname, argv[i]);
-    else if (!exists (argv[i])) err ("can not stat file '%s'", argv[i]);
+    else if (!fname && isnum (argv[i]))
+      err ("<file> file name can not be a positive number '%s'", argv[i]);
+    else if (fname && maxworkers2)
+      err ("too many arguments (including <file> and <workers>)");
+    else if (fname && !isnum (argv[i]))
+      err ("expected positive number for <workers> but got '%s'", argv[i]);
+    else if (fname) {
+      if ((maxworkers2 = atoi (argv[i])) <= 0)
+	err ("invalid number '%s' for <workers>", argv[i]);
+    } else if (!exists (argv[i])) err ("can not stat file '%s'", argv[i]);
     else fname = argv[i];
   }
+  if (maxworkers2) assert (!maxworkers), maxworkers = maxworkers2;
   if (!fname) file = stdin, fname = "<stdin>", clf = 0;
   else if (has (fname, ".gz")) file = cmd ("gunzip -c %s", fname), clf = 2;
   else if (has (fname, ".bz2")) file = cmd ("bzcat %s", fname), clf = 2;
@@ -2191,7 +2206,10 @@ int main (int argc, char ** argv) {
   if (!maxworkers) {
    maxworkers = CORES2WORKERS (ncores);
    msg ("maximum %d workers (no '-t <worker>' option)", maxworkers);
-  } else
+  } else if (maxworkers2)
+    assert (maxworkers2 == maxworkers),
+    msg ("maximum %d workers as specified ('%d')", maxworkers, maxworkers2);
+  else
     msg ("maximum %d workers as specified ('-t %d')", maxworkers, maxworkers);
 
   if (noparallel)

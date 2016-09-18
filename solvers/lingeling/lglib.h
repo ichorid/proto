@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2014 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #ifndef lglib_h_INCLUDED
@@ -87,6 +87,7 @@ void lglsizes (LGL *);				// ... data structure sizes
 // setters and getters for options
 
 void lglsetout (LGL *, FILE*);			// output file for report
+void lglsetrace (LGL *, FILE*);			// set trace output file
 void lglsetprefix (LGL *, const char*);		// prefix for messages
 
 FILE * lglgetout (LGL *);
@@ -119,6 +120,10 @@ void lglsetid (LGL *, int tid, int tids);
 
 void lglsetphase (LGL *, int lit);
 void lglresetphase (LGL *, int lit);	// Stop forcing phase in decisions.
+
+// Prefer decisions on 'important' variables.
+
+void lglsetimportant (LGL *, int lit);
 
 // Assume the solver is in the SATISFIABLE state (after 'lglsat' or
 // 'lglsimp'), then calling 'lglsetphases' will copy the current assignment

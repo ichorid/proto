@@ -1,5 +1,5 @@
 /*-------------------------------------------------------------------------*/
-/* Copyright 2010-2014 Armin Biere Johannes Kepler University Linz Austria */
+/* Copyright 2010-2016 Armin Biere Johannes Kepler University Linz Austria */
 /*-------------------------------------------------------------------------*/
 
 #include "lglib.h"
@@ -18,7 +18,7 @@ void lglbnr (const char * name, const char * prefix, FILE * file) {
   fprintf (file, "%sVersion %s %s\n", prefix, LGL_VERSION, LGL_ID);
   fprintf (file, "%s\n", prefix);
   fprintf (file, 
-     "%sCopyright (C) 2010-2014 Armin Biere JKU Linz Austria.\n",
+     "%sCopyright (C) 2010-2016 Armin Biere JKU Linz Austria.\n",
       prefix);
   fprintf (file, "%sAll rights reserved.\n", prefix);
   fprintf (file, "%s\n", prefix);
