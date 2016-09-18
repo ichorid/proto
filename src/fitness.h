@@ -12,10 +12,8 @@ private:
 	BitMask out_mask;
 public:
 	std::vector <int> guessing_vars;
-	PointStats record;
 	Sample& sample;
 	std::vector <PointStats> operator()(const std::vector <PointId> &task);
-	void ResetCurrentRecord() {record = PointStats();};
 	Evaluator (
 		Master& m,
 		Sample& s,
@@ -31,13 +29,6 @@ std::vector <PointStats> Evaluator::operator()(const std::vector <PointId> &task
 	std::vector <PointStats> out;
 	for (auto ps: master.EvalPoints(task, guessing_vars, out_mask, sample))
 		out.push_back (fitFunc (ps));
-	/*
-	if (lastRecord.id != rec.id)
-	{
-		lastRecord = rec;
-		LOG(INFO) << " New record found: " << PrintPointStats (rec, eval.guessingVars);
-	}
-	*/
 	return std::move(out);
 }
 

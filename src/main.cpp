@@ -5,6 +5,7 @@
 #include "peer.h"
 #include "fitness.h"
 #include "search/taboo.h"
+#include "search/risefall.h"
 #include "easylogging++.h"
 #include "tclap/CmdLine.h"
 #include <set>
@@ -27,6 +28,7 @@ void Search (
 		const size_t varFixStep)
 {
 
+	auto& guessing_vars = rise_fall_search.eval_.guessing_vars;
 	std::valarray <size_t> varsOrder (guessing_vars.size());
 	std::iota (std::begin(varsOrder), std::end(varsOrder), 0);
 	std::valarray <double> varsCount (guessing_vars.size());
@@ -40,10 +42,11 @@ void Search (
 
 		for (int j = 0; j < num_iterations; ++j)
 		{
-			//TODO: switch to valarray as PointID base container
+			//TODO: switch to valarray as PointId base container
+			PointId basePoint = PointId (guessing_vars.size(), 0);
 			for (int i=0; i<fixedVars.size(); ++i)
 				basePoint[fixedVars[i]] = 1; 
-			PointStats lastRecord = rise_fall_search (fixedVars, groundLevel);
+			PointStats lastRecord = rise_fall_search (groundLevel, basePoint);
 			if (lastRecord.sat_total == 0)
 				continue;
 
@@ -211,31 +214,21 @@ int main (int argc, char* argv[])
 					unit[i] *= -1;
 	}
 
-	if (starting_points.size() > 0)
-	{
-		LOG(INFO) << " STARTING POINT CHECK";
-		for (auto r: eval(starting_points)
-			searchEngine.AddPointResults (r);
-	}
+	Master master (mpi_size);
+	Evaluator eval (master, sample, guessing_vars, out_mask,
+			(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction));
 
 	TabooSearch taboo (sat_threshold);
 	for (auto vec: varGroupsMasks)
 		taboo.varPalette_.insert(vec);
 
-	Search (
-		RiseFallSearch (
-			Evaluator (
-				Master (mpi_size), 
-				sample, 
-				guessing_vars,
-				out_mask,
-				(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction)),
-			taboo,
-			numPoints,
-			stallLimit),
-		num_iterations,
-		groundLevel,
-		varFixStep);
+	for (auto r: eval(starting_points))
+	{
+		PointStats* ps = taboo.AddPointResults (r);
+		LOG(INFO) << "Starting point: " << PrintPointStats (*ps, eval.guessing_vars);
+	}
+	RiseFallSearch risefall (eval, taboo, num_points, stallLimit);
+	Search (risefall, num_iterations, groundLevel, varFixStep);
 
 	return 0;
 }

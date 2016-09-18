@@ -31,7 +31,7 @@ typedef enum
 
 struct Task
 {
-	PointId id = "";
+	PointId id = PointId();
 	std::vector <UnitClauseVector> units;
 };
 

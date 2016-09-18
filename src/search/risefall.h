@@ -1,40 +1,48 @@
+#include "easylogging++.h"
+
 class RiseFallSearch
 {
+private:
+	TabooSearch& searchEngine_;
+	int numPoints_;
+	int stallLimit_;
 
-PointStats RiseFallSearch (
-		Evaluator& eval,
-		TabooSearch& searchEngine,
-		const int num_points,
-		const int groundLevel,
-		const int stallLimit,
-		PointId basePoint = PointId ())
+public:
+	Evaluator& eval_;
+	RiseFallSearch (Evaluator& e, TabooSearch& s, int n, int l):
+		eval_(e), searchEngine_(s), numPoints_(n), stallLimit_(l) {}
+	
+	PointStats operator() (int groundLevel, PointId basePoint = PointId());
+};
+
+PointStats RiseFallSearch::operator() (int groundLevel, PointId basePoint )
 {
 	if (basePoint == PointId ())
-		basePoint = PointId(eval.guessing_vars.size(), 0);
-
+		basePoint = PointId(eval_.guessing_vars.size(), 0);
 
 	assert (CountOnes(basePoint) <= groundLevel);
 	LOG(INFO) << " STAGE 1 - RISE";
-	for (int i = groundLevel; (searchEngine.origin_queue_.empty() && (i <= eval.guessing_vars.size())); ++i)
-		for (auto r: eval (searchEngine.GenerateRandomPoints (i, 10 /* num points */, basePoint)))
-			searchEngine.AddPointResults (r, 2 /* Sat threshold */);
+	for (int i = groundLevel; (searchEngine_.origin_queue_.empty() && (i <= eval_.guessing_vars.size())); ++i)
+		for (auto r: eval_ (searchEngine_.GenerateRandomPoints (i, 10 /* num points */, basePoint)))
+			searchEngine_.AddPointResults (r, 2 /* Sat threshold */);
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
-	for (int stallCount = 0; (!searchEngine.origin_queue_.empty() && (stallCount < stallLimit)); ++stallCount)
-		for (auto r: eval (searchEngine.GenerateNewPoints (num_points, basePoint)))
-			if (searchEngine.AddPointResults (r)->id == eval.record.id)
+	for (int stallCount = 0; (!searchEngine_.origin_queue_.empty() && (stallCount < stallLimit_)); ++stallCount)
+		for (auto r: eval_ (searchEngine_.GenerateNewPoints (numPoints_, basePoint)))
+		{
+			PointStats* cur = searchEngine_.AddPointResults (r);
+			if (cur->best_incapacity < lastRecord.best_incapacity)
 			{
 				stallCount = 0;
-				lastRecord = eval.record;
+				lastRecord = *cur;
+				LOG(INFO) << " New record found: " << PrintPointStats (lastRecord, eval_.guessing_vars);
 			}
+		}
 
-	while(!searchEngine.origin_queue_.empty ()) 
-		searchEngine.origin_queue_.pop ();
-	eval.ResetCurrentRecord ();
+	while(!searchEngine_.origin_queue_.empty ()) 
+		searchEngine_.origin_queue_.pop ();
 
 	return lastRecord;
 }
 
-
-RiseFallSearch::Search (
