@@ -31,7 +31,7 @@ typedef std::unordered_map <PointId, PointStats*> PointStatsDB;
 class TabooSearch
 {
 public:
-	TabooSearch (const int sat_threshold = 1);
+	TabooSearch ();
 	~TabooSearch ();
 	//PointId ProcessPointResults (const PointId& point, const Results& results);
 
@@ -39,7 +39,7 @@ public:
 	* \brief Adds point evaluation results to points DB
 	* \param results [in] Point evaluation results, inluding point ID
 	*/
-	PointStats* AddPointResults (const PointStats& ps, int size_thresh_tmp = 0);
+	PointStats* AddPointResults (const PointStats& ps, int sat_threshold = 0);
 	
 	/**
 	* \brief Returns current record point from point DB
@@ -53,8 +53,6 @@ public:
 	// A "palette" of vars / var groups. Used to construct new points. 
 	std::unordered_set <PointId> varPalette_;
 
-	// Minimal required number of solved (SAT) problems in a sample
-	int sat_threshold_ = 1;
 	std::vector <PointId> GenerateNewPoints ( 
 			const int desired_candidates = 1,
 			const PointId& fixedVarsMask = PointId());

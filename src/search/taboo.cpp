@@ -8,9 +8,8 @@
 #include <functional>
 #include <stack>
 
-TabooSearch::TabooSearch(int sat_threshold)
+TabooSearch::TabooSearch()
 {
-	sat_threshold_ = sat_threshold;
 	// Init rng with system's enthropy source
 	std::random_device rnd_dev;
 	rng.seed(rnd_dev());
@@ -75,7 +74,7 @@ std::vector<PointId> TabooSearch::GetUncheckedPaletteNbhd (const PointId& point,
 }
 
 
-PointStats* TabooSearch::AddPointResults (const PointStats& ps, int sat_tresh_tmp)
+PointStats* TabooSearch::AddPointResults (const PointStats& ps, int sat_threshold)
 {
 	PointStats* psp = new PointStats; 
 	*psp = ps;
@@ -84,7 +83,7 @@ PointStats* TabooSearch::AddPointResults (const PointStats& ps, int sat_tresh_tm
 	assert (checked_points_.count(ps.id)==0);
 	checked_points_[ps.id] = psp;
 
-	if (ps.sat_total >= (sat_tresh_tmp>0 ? sat_tresh_tmp : sat_threshold_))
+	if (ps.sat_total >= sat_threshold)
 	{
 		origin_queue_.push(psp);
 		// Check and update global incapacity record if necessary

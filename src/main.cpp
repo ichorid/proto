@@ -220,7 +220,7 @@ int main (int argc, char* argv[])
 	Evaluator eval (master, sample, guessing_vars, out_mask,
 			(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction));
 
-	TabooSearch taboo (sat_threshold);
+	TabooSearch taboo;
 	for (auto vec: varGroupsMasks)
 		taboo.varPalette_.insert(vec);
 
@@ -229,7 +229,7 @@ int main (int argc, char* argv[])
 		PointStats* ps = taboo.AddPointResults (r);
 		LOG(INFO) << "Starting point: " << PrintPointStats (*ps, eval.guessing_vars);
 	}
-	RiseFallSearch risefall (eval, taboo, num_points, stallLimit);
+	RiseFallSearch risefall (eval, taboo, num_points, stallLimit, sat_threshold);
 	Search (risefall, num_iterations, groundLevel, varFixStep);
 
 	return 0;
