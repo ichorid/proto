@@ -31,8 +31,9 @@ PointStats RiseFallSearch::operator() (int groundLevel, PointId basePoint )
 	for (int stallCount = 0; (!searchEngine_.origin_queue_.empty() && (stallCount < stallLimit_)); ++stallCount)
 		for (auto r: eval_ (searchEngine_.GenerateNewPoints (numPoints_, basePoint)))
 		{
+			//TODO: refactor AddPointResults not to check for sat_threshold ?
 			PointStats* cur = searchEngine_.AddPointResults (r);
-			if (cur->best_incapacity < lastRecord.best_incapacity)
+			if ((r.sat_total >= searchEngine_.sat_threshold_) && (r.best_incapacity < lastRecord.best_incapacity))
 			{
 				stallCount = 0;
 				lastRecord = *cur;
