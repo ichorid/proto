@@ -103,7 +103,7 @@ int main (int argc, char* argv[])
 	int num_vars;
 	int stallLimit;
 	int varFixStep;
-	PointId knownVars;
+	Clause knownVars;
 	try
 	{
 		// Read command line parameters via TCLAP
@@ -185,8 +185,8 @@ int main (int argc, char* argv[])
 
 		if (knownVarsFilename_arg.isSet())
 		{
-			knownVars = ReadPointsFile(knownVarsFilename_arg.getValue().c_str(), guessing_vars)[0];
-			LOG (INFO) << "Known vars:" << Point2Varstring (knownVars);
+			knownVars = ReadVarGroupsFile (knownVarsFilename_arg.getValue().c_str())[0];
+			LOG (INFO) << "Known vars:" << Vec2String (knownVars, " ");
 		}
 	}
 	catch (TCLAP::ArgException &e)
@@ -197,11 +197,11 @@ int main (int argc, char* argv[])
 
 	for (int i = 0; i < num_vars; ++i)
 		out_mask.push_back(i < (num_vars - out_len) ? 0 : 1);
-	// Remove known vars from guessing vars
+
 	if (!knownVars.empty())
 	{
-		guessing_vars = RemoveIntsFromVectorByBitMask (guessing_vars, knownVars); 
-		out_mask = BM_or(out_mask, knownVars);
+		BitMask knownVarsBM = ExpandBM( BitMask( knownVars.size(), char(1)), knownVars);
+		out_mask = BM_or(out_mask, knownVarsBM);
 	}
 	assert(out_mask.size() == sample[0].size());
 	// UNSAT mode option - make wrong UC assumptions for sample units
