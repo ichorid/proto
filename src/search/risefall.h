@@ -26,7 +26,11 @@ PointStats RiseFallSearch::operator() (int groundLevel, PointId basePoint )
 	LOG(INFO) << " STAGE 1 - RISE";
 	for (int i = groundLevel; (searchEngine_.origin_queue_.empty() && (i <= eval_.guessing_vars.size())); ++i)
 		for (auto r: eval_ (searchEngine_.GenerateRandomPoints (i, 10 /* num points */, basePoint)))
-			searchEngine_.AddPointResults (r, rise_sat_threshold_);
+		{
+			auto p = searchEngine_.AddPointResults (r, rise_sat_threshold_);
+			if (p->sat_total >= rise_sat_threshold_)
+				LOG(INFO) << "Rise point found:" << PrintPointStats (*p, eval_.guessing_vars);
+		}
 
 	LOG(INFO) << " STAGE 2 - FALL";
 	PointStats lastRecord;
