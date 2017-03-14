@@ -18,6 +18,7 @@ typedef UnitClauseVector Assignment; // TODO: move me to separate file!
 typedef std::vector <Clause> Cnf;
 typedef std::string PointId;
 typedef std::string BitMask;
+#include "veinbiv.h"
 typedef enum
 {
 	UNINITIALIZED,
@@ -100,6 +101,8 @@ inline std::vector<BitMask> BM_or(const std::vector<BitMask>& a, const BitMask& 
 
 inline BitMask ExpandBM(const BitMask& m, const std::vector <int>& v)
 {
+	if(m.size() != v.size())
+		LOG(INFO) << m.size() << " " << v.size();
 	assert(m.size() == v.size());
 	const int out_size = *std::max_element(v.begin(), v.end());
 	BitMask out(out_size, 0);
@@ -193,18 +196,23 @@ template <typename T> std::string Vec2String(const T & vec, const char* s = "") 
 
 inline std::string PrintPointStats(const PointStats& ps, std::vector <int> guessing_vars = std::vector <int> ())
 {
+	std::vector <int> true_guessing_vars;
+	for (int i=1; i<=177; ++i)
+		true_guessing_vars.push_back(i);
+	PointId true_point = construct_d_set_for_66_inputs(ps.id);
+
 	if (guessing_vars.size() == 0)
 		for (int i = 0; i < ps.id.size(); ++i)
 			guessing_vars.push_back(i+1);
 	std::ostringstream ss;
-	ss  << std::setw(5) << CountOnes(ps.id) << " "
+	ss  << std::setw(5) << CountOnes(true_point) << " "
 	    << std::setw(8) << std::setprecision(2) << std::fixed << ps.best_incapacity << " "    
 	    << std::setw(12) << std::scientific << pow(2.0, ps.best_incapacity) << " "    
 	    << "W: " << std::setw(8) << std::scientific << ps.best_cutoff << " "    
 	    << std::setw(5) << ps.sat_total << " /" 
 	    << std::setw(5) << ps.sample_size << " " 
 	    << Point2Bitstring (ps.id) << " ccc "
-	    << Point2Varstring (ExpandBM (ps.id, guessing_vars)) ;
+	    << Point2Varstring (ExpandBM (true_point, true_guessing_vars)) ;
 	return ss.str();
 
 }

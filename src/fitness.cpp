@@ -15,8 +15,10 @@ PointStats IncapacityFitnessFunction(const PointResults& results)
 	size_t sample_size = results.reps.size();
 	ps.sample_size = sat_scans.size();
 
+	PointId true_point = construct_d_set_for_66_inputs(ps.id);
 	// derive it's best incapacity
-	int S = CountOnes(ps.id);
+	//int S = CountOnes(ps.id);
+	int S = CountOnes(true_point);
 	for (int i = 0; i < sat_scans.size(); ++i)
 	{
 		double t = sat_scans[i];

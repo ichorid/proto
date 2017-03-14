@@ -11,7 +11,6 @@
 #include "wrappers/lingeling.h"
 #include "easylogging++.h"
 
-
 extern MpiBase* mpiS;
 
 // Here we describe our datastructures to MPI
@@ -126,12 +125,19 @@ std::vector <PointResults> Master::EvalPoints (
 	       	const BitMask out_mask,
 	      	const Sample sample )
 {
+	
+	// VEINAHACK
+	std::vector <int> true_guessing_vars;
+	for (int i=1; i<=177; ++i)
+		true_guessing_vars.push_back(i);
+
 	std::vector <Task> tasks;
 	for (auto point: probe_points)
 	{
+		PointId true_point = construct_d_set_for_66_inputs(point);
 		Task t;
 		t.id = point;
-		t.units = GenTaskUnits (BM_or ( ExpandBM(point, guessing_vars), out_mask), sample);
+		t.units = GenTaskUnits (BM_or ( ExpandBM (true_point, true_guessing_vars), out_mask), sample);
 		tasks.push_back(t);
 	}
 	return EvalTasks (tasks);
