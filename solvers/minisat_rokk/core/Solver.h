@@ -365,7 +365,7 @@ inline void     Solver::setPropBudget(int64_t x){ propagation_budget = propagati
 inline void     Solver::setScansBudget(int64_t x){ watch_scans_budget= watch_scans  + x; } //added PROTO
 inline void     Solver::interrupt(){ asynch_interrupt = true; }
 inline void     Solver::clearInterrupt(){ asynch_interrupt = false; }
-inline void     Solver::budgetOff(){ conflict_budget = propagation_budget = -1; }
+inline void     Solver::budgetOff(){ conflict_budget = propagation_budget = watch_scans = -1; }
 inline bool     Solver::withinBudget() const {
     return !asynch_interrupt &&
            (conflict_budget    < 0 || conflicts < (uint64_t)conflict_budget) &&
