@@ -1,6 +1,7 @@
 #include "utils.h"
 #include "wrappers/minisat22.h"
 #include <random>
+#include <limits>
 
 void SkipLine(IStream& in)
 {
@@ -176,8 +177,14 @@ Sample MakeSample(const Cnf& cnf, int core_len, int sample_size, std::vector <st
 	std::random_device rng;
 	std::mt19937 mt(rng());
 	std::uniform_int_distribution<int> rnd_bit(0,1);
+	std::uniform_int_distribution<int> rnd_int1max(1,std::numeric_limits<int>::max());
 	Minisat22Wrapper solver;
 	solver.InitSolver(cnf);
+	// Little hack to randomize polarity of non-core vars in some corner
+	// cases, e.g. in block ciphers. It is not super correct, since it
+	// relies on solver's rng. Minisat's rng is weak, by the way. 
+	if (randomMode)
+		solver.Randomize(rnd_int1max(mt));
 	for (int j=0; j<sample_size; ++j){
 		if (!randomMode)
 			assert (initStream[j].size() == core_len);

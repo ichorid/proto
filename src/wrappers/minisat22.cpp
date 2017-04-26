@@ -74,3 +74,9 @@ UnitClauseVector Minisat22Wrapper::GetSolution()
 	return out;
 }
 
+void Minisat22Wrapper::Randomize(const int rnd)
+{
+	S.rnd_pol = true;
+	S.random_seed = double(rnd);
+}
+
