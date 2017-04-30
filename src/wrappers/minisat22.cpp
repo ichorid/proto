@@ -11,7 +11,7 @@
 
 Minisat::Solver *pS;
 
-void SIGINT_interrupt(int signum) { pS->interrupt(); }
+void catch_SIGVTALARM(int signum) { pS->interrupt(); }
 
 // TODO: move me to separate lib!
 // Shameless copypaste from Minisat source!
@@ -24,20 +24,33 @@ double cpuTime(void)
 
 void SetTimeLim(int cpu_lim)
 {
-	rlimit rl;
-	rl.rlim_max = RLIM_INFINITY;
-	rl.rlim_cur = (rlim_t)cpuTime() + cpu_lim;
-	setrlimit(RLIMIT_CPU, &rl);
-	signal(SIGXCPU, SIGINT_interrupt);
+	struct sigaction sa;
+	memset (&sa, 0, sizeof (sa));
+	sa.sa_handler = &catch_SIGVTALARM;
+	sigaction (SIGVTALRM, &sa, NULL);
+
+	struct itimerval timer;
+	timer.it_value.tv_sec = cpu_lim;
+	timer.it_value.tv_usec = 0;
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = 0;
+	setitimer (ITIMER_VIRTUAL, &timer, NULL);
 }
 
 void RemoveTimeLim()
 {
-	rlimit rl;
-	rl.rlim_cur = RLIM_INFINITY;
-	rl.rlim_max = RLIM_INFINITY;
-	setrlimit(RLIMIT_CPU, &rl);
-	signal(SIGXCPU, SIG_DFL);
+	struct itimerval timer;
+	timer.it_value.tv_sec = 0;
+	timer.it_value.tv_usec = 0;
+	timer.it_interval.tv_sec = 0;
+	timer.it_interval.tv_usec = 0;
+	setitimer (ITIMER_VIRTUAL, &timer, NULL);
+
+
+	struct sigaction sa;
+	memset (&sa, 0, sizeof (sa));
+	sa.sa_handler = SIG_DFL;
+	sigaction (SIGVTALRM, &sa, NULL);
 }
 
 Minisat22Wrapper::Minisat22Wrapper()
@@ -110,7 +123,8 @@ SolverReport Minisat22Wrapper::GetReport()
 {
 	SolverReport out;
 	out.state = state;
-	out.watch_scans = seconds_limit_>0 ? solve_time_ : S.watch_scans;
+	// milliseconds
+	out.watch_scans = seconds_limit_>0 ? 1000*solve_time_ : S.watch_scans;
 	if (out.watch_scans == 0)
 		out.watch_scans = 1;
 	return out;

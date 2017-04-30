@@ -22,7 +22,7 @@ protected:
 	//Members
 	Minisat::Solver S;
 	SWState state;
-	int solve_time_ = 0;
+	double solve_time_ = 0;
 	void addProblem(const Cnf& cnf);
 };
 
