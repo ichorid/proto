@@ -17,10 +17,12 @@ public:
 	SolverReport GetReport();
 	UnitClauseVector GetSolution();
 	void Randomize(const int rnd);
+	Minisat22Wrapper();
 protected:
 	//Members
 	Minisat::Solver S;
 	SWState state;
+	int solve_time_ = 0;
 	void addProblem(const Cnf& cnf);
 };
 

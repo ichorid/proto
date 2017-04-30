@@ -44,12 +44,14 @@ public:
 	Cnf cnf_;
 	int scans_limit_;
 
-	Worker(Cnf cnf,
-		       	int scans_limit =100000,
-		       	int master_id = 0,
-		       	SolverType solverType = MINISAT_SOLVER);
+	Worker( Cnf cnf,
+	       	int scans_limit =100000,
+	       	int seconds_limit = 0,
+	       	int master_id = 0,
+	       	SolverType solverType = MINISAT_SOLVER);
 	void MainJobCycle();
 	SolverType solverType_;
+	int seconds_limit_;
 protected:
 	SolverReport ProcessAssignment (Assignment &asn);
 	Assignment   WaitRecieveAssignment ();
