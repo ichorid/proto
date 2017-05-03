@@ -125,12 +125,17 @@ int main (int argc, char* argv[])
 		TCLAP::ValueArg <std::string> extInitStreamsFilename_arg ("", "streams_file","External init streams (core vars values) filename", false, "","ISFILENAME", cmd);
 		TCLAP::SwitchArg modeUnsat_arg ("a", "mode-unsat","Experimental 'UNSAT' mode",cmd, false);
 		TCLAP::SwitchArg useLingeling_arg("", "ling","use Lingeling solver engine",cmd, false);
+		TCLAP::SwitchArg useIpasir_arg("", "ipasir","use Ipasir generic solver engine interface",cmd, false);
 		TCLAP::UnlabeledValueArg<std::string> filename_arg("filename","Path to SAT problem file in DIMACS CNF format.", true, "","CNF_FILENAME", cmd);
 		cmd.parse(argc, argv);
 
 		scans_limit = scans_limit_arg.getValue();
 		seconds_limit = seconds_limit_arg.getValue();
-		solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
+		solverType = MINISAT_SOLVER;
+		if (useLingeling_arg.getValue())
+			solverType = LINGELING_SOLVER;
+		if (useIpasir_arg.getValue())
+			solverType = IPASIR_SOLVER;
 		ReadCnfFile(filename_arg.getValue().c_str(), cnf);
 		//TODO: init workers through MPI 
 		// Initialize worker processes

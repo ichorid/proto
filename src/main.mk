@@ -8,6 +8,7 @@ SOURCES := \
 	search/taboo.cpp \
 	wrappers/minisat22.cpp \
 	wrappers/lingeling.cpp \
+	wrappers/ipasir_wrapper.cpp \
 	utils.cpp \
 	peer.cpp \
 	../solvers/$(MINISAT)/core/Solver.cc \
@@ -16,11 +17,11 @@ SOURCES := \
 	main.cpp
 
 BUILD_DIR := ../build
-CXXFLAGS := -g -std=c++11 -O5 
+CXXFLAGS := -g -std=c++11 -O3
 
 DEFS := __STDC_LIMIT_MACROS __STDC_FORMAT_MACROS NDBLSCR NLGLOG NCHKSOL NLGLPICOSAT NLGLDRUPLIG NLGLYALSAT
 
-INCDIRS := ./ ../include ../solvers/$(MINISAT) ../solvers/$(MINISAT)/core ../ ../solvers/lingeling
+INCDIRS := ./ ../include ../solvers/$(MINISAT) ../solvers/$(MINISAT)/core ../ ../solvers/lingeling 
 
 TARGET_DIR := ../bin
 

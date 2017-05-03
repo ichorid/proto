@@ -9,6 +9,7 @@
 #include "peer.h"
 #include "wrappers/minisat22.h"
 #include "wrappers/lingeling.h"
+#include "wrappers/ipasir_wrapper.h"
 #include "easylogging++.h"
 
 
@@ -58,6 +59,8 @@ SolverReport Worker::ProcessAssignment(Assignment &asn)
 		s = new Minisat22Wrapper;
 	else if (solverType_ == LINGELING_SOLVER)
 		s = new LingelingWrapper;
+	else if (solverType_ == IPASIR_SOLVER)
+		s = new IpasirWrapper;
 	s->InitSolver (cnf_);
 	s->SetWatchScansLimit (scans_limit_);
 	s->AddUCs (asn);

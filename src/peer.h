@@ -9,7 +9,8 @@
 enum SolverType
 {
 	MINISAT_SOLVER,
-	LINGELING_SOLVER
+	LINGELING_SOLVER,
+	IPASIR_SOLVER
 };
 // It's constructor/destructor actually invoke MPI_Datatype (un)registration procedures.
 class MpiBase

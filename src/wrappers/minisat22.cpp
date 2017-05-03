@@ -15,14 +15,14 @@ void catch_SIGVTALARM(int signum) { pS->interrupt(); }
 
 // TODO: move me to separate lib!
 // Shameless copypaste from Minisat source!
-double cpuTime(void)
+static double cpuTime(void)
 {
     struct rusage ru;
     getrusage(RUSAGE_SELF, &ru);
     return (double)ru.ru_utime.tv_sec + (double)ru.ru_utime.tv_usec / 1000000;
 }
 
-void SetTimeLim(int cpu_lim)
+static void SetTimeLim(int cpu_lim)
 {
 	struct sigaction sa;
 	memset (&sa, 0, sizeof (sa));
@@ -37,7 +37,7 @@ void SetTimeLim(int cpu_lim)
 	setitimer (ITIMER_VIRTUAL, &timer, NULL);
 }
 
-void RemoveTimeLim()
+static void RemoveTimeLim()
 {
 	struct itimerval timer;
 	timer.it_value.tv_sec = 0;
