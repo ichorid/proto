@@ -240,6 +240,11 @@ int main (int argc, char* argv[])
 		}
 
 
+		std::random_device rd;
+		std::mt19937 g(rd());
+
+		std::shuffle(tmp_sample.begin(), tmp_sample.end(), g);
+
 		Evaluator eval (master, tmp_sample, guessing_vars, out_mask,
 				(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction));
 
