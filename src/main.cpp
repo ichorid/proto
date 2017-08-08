@@ -21,8 +21,7 @@ inline std::string IntVector2String(const std::vector <int> &p ) { std::stringst
 
 
 
-void Search (
-	       	RiseFallSearch& rise_fall_search,
+void Search ( RiseFallSearch& rise_fall_search,
 		const int num_iterations,
 		const int groundLevel,
 		const size_t varFixStep)
@@ -83,6 +82,7 @@ int main (int argc, char* argv[])
 	// Search parameters
 	Cnf cnf;
 	int scans_limit;
+	int seconds_limit = 0;
 	int sample_size;
 	int num_iterations;
 	int sat_threshold;
@@ -108,7 +108,8 @@ int main (int argc, char* argv[])
 	{
 		// Read command line parameters via TCLAP
 		TCLAP::CmdLine cmd("This program is used to search for 'inverse backdoor sets'.", ' ', "0.1");
-		TCLAP::ValueArg<int> scans_limit_arg	("w", "scans", "Watched literal scans limit for individual solver process.", false, 200000,"SCANS_LIMIT", cmd);
+		TCLAP::ValueArg<int> scans_limit_arg	("w", "scans", "Watched literal scans limit for individual solver process.", false, -1,"SCANS_LIMIT", cmd);
+		TCLAP::ValueArg<int> seconds_limit_arg	("e", "seconds", "Time limit in seconds for individual solver process.", false, 0,"SECONDS_LIMIT", cmd);
 		TCLAP::ValueArg<int> sample_size_arg	("s", "samplesize","Total sample size.", false, 10,"SAMPLE_SIZE", cmd);
 		TCLAP::ValueArg<int> num_iterations_arg	("i", "iter","Search iterations limit.", false, 1000,"ITERATIONS_LIMIT", cmd);
 		TCLAP::ValueArg<int> sat_threshold_arg	("t", "thresh","Ignore point results if less than this number of units were solved.", false, 1,"SAT_THRESH", cmd);
@@ -128,13 +129,14 @@ int main (int argc, char* argv[])
 		cmd.parse(argc, argv);
 
 		scans_limit = scans_limit_arg.getValue();
+		seconds_limit = seconds_limit_arg.getValue();
 		solverType = useLingeling_arg.getValue() ? LINGELING_SOLVER: MINISAT_SOLVER;
 		ReadCnfFile(filename_arg.getValue().c_str(), cnf);
 		//TODO: init workers through MPI 
 		// Initialize worker processes
 		if (mpi_rank > 0)
 		{
-			Worker worker(cnf, scans_limit, 0, solverType);
+			Worker worker(cnf, scans_limit, seconds_limit, 0, solverType);
 			worker.MainJobCycle();
 			return 0;
 		}

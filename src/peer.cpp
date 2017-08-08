@@ -29,10 +29,11 @@ void MpiBase::MPI_MakeSolverReportType()
 }
 
 /* Worker class methods */
-Worker::Worker( Cnf cnf, int scans_limit , int master_id, SolverType solverType)
+Worker::Worker( Cnf cnf, int scans_limit, int seconds_limit, int master_id, SolverType solverType)
 {
 	cnf_         = cnf;
 	scans_limit_ = scans_limit;
+	seconds_limit_ = seconds_limit;
 	master_id_   = master_id;
 	solverType_ = solverType;
 }
@@ -58,8 +59,9 @@ SolverReport Worker::ProcessAssignment(Assignment &asn)
 	else if (solverType_ == LINGELING_SOLVER)
 		s = new LingelingWrapper;
 	s->InitSolver (cnf_);
-	s->AddUCs (asn);
 	s->SetWatchScansLimit (scans_limit_);
+	s->AddUCs (asn);
+	s->seconds_limit_ = seconds_limit_;
 	s->Solve ();
 	SolverReport out = s->GetReport();
 	delete (s);

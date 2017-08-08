@@ -14,6 +14,7 @@ public:
 	virtual SolverReport GetReport() = 0;
 	virtual UnitClauseVector GetSolution() = 0;
 	virtual ~SWrapper(){};
+	int seconds_limit_ = 0;
 };
 
 
