@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iomanip>
 #include <unordered_set>
+#include <cmath>
 
 typedef int Lit;
 typedef int Var;

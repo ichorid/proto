@@ -162,11 +162,13 @@ std::vector <SolverReport> Master::EvalTaskUnits(const std::vector <UnitClauseVe
 {
 	std::vector <SolverReport> out(units.size());
 	std::vector <int> worker2unitnum(free_workers_.size()+1);
+	bool stop_flag = false;
 	for (int i=0, j=0; i < out.size(); ++i)
 	{
 		// Send work until free_workers stack depletes or there
 		// are no units left
-		while (free_workers_.size()>0 && j < out.size()){
+		while (free_workers_.size()>0 && j < out.size() && !stop_flag)
+		{
 			int workernum = GetWorker();
 			worker2unitnum[workernum] = j;
 			GiveoutAssignment(workernum, units[j]); 
@@ -175,8 +177,13 @@ std::vector <SolverReport> Master::EvalTaskUnits(const std::vector <UnitClauseVe
 		if (units[0].size()==0) return out; // Special case - stop signal task
 		// Wait for a report from worker and add it's id to
 		// free_workers stack immediately.
-		auto report = RecieveAndRegister();
-		out[worker2unitnum[free_workers_.back()]]=report;
+		if (free_workers_.size()!=(worker2unitnum.size()-1))
+		{
+			auto report = RecieveAndRegister();
+			out[worker2unitnum[free_workers_.back()]]=report;
+			if (report.state == SAT)
+				stop_flag = true;
+		}
 	};
 	assert (free_workers_.size()==(worker2unitnum.size()-1));
 	return out;

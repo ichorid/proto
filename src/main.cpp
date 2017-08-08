@@ -219,20 +219,42 @@ int main (int argc, char* argv[])
 	}
 
 	Master master (mpi_size);
-	Evaluator eval (master, sample, guessing_vars, out_mask,
-			(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction));
 
-	TabooSearch taboo;
-	for (auto vec: varGroupsMasks)
-		taboo.varPalette_.insert(vec);
+		
 
-	for (auto r: eval(starting_points))
+	// Generate sample for solving mode
+	for (auto true_pair: sample)
 	{
-		PointStats* ps = taboo.AddPointResults (r);
-		LOG(INFO) << "Starting point: " << PrintPointStats (*ps, eval.guessing_vars);
+		Sample tmp_sample;
+		PointId point_to_check = starting_points[0];
+		int bd_size = CountOnes(point_to_check);
+		assert(bd_size <32); 
+
+		for (int i=0; i<(1<<bd_size); ++i)
+		{
+			UnitClauseVector new_pair = true_pair;
+			for (int j=0; j<point_to_check.size(); ++j)
+				if (point_to_check[j])
+					new_pair[j] = abs(new_pair[j])* ((((1<<j) & i) >> j)? -1 : 1);
+			tmp_sample.push_back(new_pair);
+		}
+
+
+		Evaluator eval (master, tmp_sample, guessing_vars, out_mask,
+				(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction));
+
+		TabooSearch taboo;
+		for (auto vec: varGroupsMasks)
+			taboo.varPalette_.insert(vec);
+
+		for (auto r: eval(starting_points))
+		{
+			PointStats* ps = taboo.AddPointResults (r);
+			LOG(INFO) << "Starting point: " << PrintPointStats (*ps, eval.guessing_vars);
+		}
 	}
-	RiseFallSearch risefall (eval, taboo, num_points, stallLimit, sat_threshold);
-	Search (risefall, num_iterations, groundLevel, varFixStep);
+	//RiseFallSearch risefall (eval, taboo, num_points, stallLimit, sat_threshold);
+	//Search (risefall, num_iterations, groundLevel, varFixStep);
 
 	return 0;
 }
