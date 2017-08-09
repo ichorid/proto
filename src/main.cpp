@@ -233,9 +233,14 @@ int main (int argc, char* argv[])
 		for (int i=0; i<(1<<bd_size); ++i)
 		{
 			UnitClauseVector new_pair = true_pair;
-			for (int j=0; j<point_to_check.size(); ++j)
+			for (int j=0, k=0; j<point_to_check.size(); ++j)
+			{
 				if (point_to_check[j])
-					new_pair[j] = abs(new_pair[j])* ((((1<<j) & i) >> j)? -1 : 1);
+				{
+					new_pair[j] = abs(new_pair[j])* ((((1<<k) & i) >> k)? -1 : 1);
+					++k;
+				}
+			}
 			tmp_sample.push_back(new_pair);
 		}
 
@@ -245,6 +250,19 @@ int main (int argc, char* argv[])
 
 		std::shuffle(tmp_sample.begin(), tmp_sample.end(), g);
 
+
+		bool ok_flag = false;
+		for (auto s: tmp_sample)
+			for (int i=0; i< true_pair.size(); ++i)
+			{
+				if(true_pair[i] != s[i])
+					break;
+				if(i == (true_pair.size()-1))
+					ok_flag = true;
+
+			}
+		assert (ok_flag && "No correct pair in sample!");
+		
 		Evaluator eval (master, tmp_sample, guessing_vars, out_mask,
 				(modeUnsat ? TotalSolvedFitnessFunction : IncapacityFitnessFunction));
 
